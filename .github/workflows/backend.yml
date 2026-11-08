@@ -10,15 +10,80 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Scan worktree and reachable history for secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          image=ghcr.io/gitleaks/gitleaks:v8.30.1
+          docker run --rm --network none -v "$PWD:/repo:ro" "$image" dir --redact=100 /repo
+          docker run --rm --network none -v "$PWD:/repo:ro" -e GIT_CONFIG_COUNT=1 \
+            -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo "$image" git --redact=100 --log-opts=--all /repo
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-      - run: dotnet restore chat.sln
-      - run: dotnet format chat.sln --no-restore --verify-no-changes
+      - name: Restore and audit transitive packages
+        run: dotnet restore chat.sln -p:NuGetAuditMode=all -warnaserror:NU1900,NU1903,NU1904,NU1905
       - run: dotnet build chat.sln --no-restore -warnaserror
       - run: dotnet test chat.sln --no-build
+      - run: dotnet format chat.sln --no-restore --verify-no-changes
+      - name: Check EF migrations and generate upgrade SQL
+        shell: bash
+        run: |
+          dotnet tool restore
+          dotnet ef migrations has-pending-model-changes --project src/chat.Infrastructure --startup-project src/chat.Api --no-build
+          dotnet ef migrations script --idempotent --project src/chat.Infrastructure --startup-project src/chat.Api --no-build \
+            --output "$RUNNER_TEMP/chat-migrations.sql"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate schema and consumer harness
+        run: |
+          npx --yes @redocly/cli@2.76.0 lint --extends spec artifacts/openapi.json
+          npm ci --prefix tools/consumer-smoke --ignore-scripts
+          npm audit --prefix tools/consumer-smoke --audit-level=high
+          node --check tools/consumer-smoke/signalr-smoke.mjs
+      - name: Reject breaking changes from the published contract
+        shell: bash
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          image=tufin/oasdiff:v1.34.1
+          docker run --rm --network none -v "$PWD:/spec:ro" -w /spec "$image" breaking --fail-on ERR \
+            artifacts/baselines/openapi-0.4.0.json artifacts/openapi.json
+          if [[ -n "$PR_BASE" ]]; then
+            git show "$PR_BASE:artifacts/openapi.json" > "$RUNNER_TEMP/base-openapi.json"
+            docker run --rm --network none -v "$PWD:/spec:ro" -v "$RUNNER_TEMP/base-openapi.json:/baseline.json:ro" \
+              "$image" breaking --fail-on ERR /baseline.json /spec/artifacts/openapi.json
+          fi
+      - name: Static analysis (C#)
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=0
+          docker run --rm -v "$PWD:/src:ro" -w /src semgrep/semgrep:1.146.0 semgrep scan \
+            --config p/csharp --error --metrics off --no-git-ignore --exclude bin --exclude obj \
+            --json src > "$RUNNER_TEMP/semgrep.json" || status=$?
+          node tools/security/verify-semgrep.mjs "$RUNNER_TEMP/semgrep.json"
+          exit "$status"
+      - name: Build and scan deployable runtime image
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet publish src/chat.Api -c Release --no-restore -p:UseAppHost=false -o "$RUNNER_TEMP/chat-image"
+          docker build -f deploy/Dockerfile -t chat-backend:ci "$RUNNER_TEMP/chat-image"
+          docker run --rm --entrypoint dotnet chat-backend:ci --list-runtimes
+          docker save -o "$RUNNER_TEMP/chat-backend.tar" chat-backend:ci
+          docker run --rm -v "$RUNNER_TEMP/chat-backend.tar:/image.tar:ro" aquasec/trivy:0.76.2 image \
+            --input /image.tar --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --exit-on-eol 1 \
+            --db-repository ghcr.io/aquasecurity/trivy-db:2 --db-repository public.ecr.aws/aquasecurity/trivy-db:2 \
+            --timeout 10m --no-progress
       - uses: actions/upload-artifact@v4
         with:
           name: openapi

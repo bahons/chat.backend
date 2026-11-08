@@ -1,36 +1,68 @@
+using chat.Api.Businesses;
 using chat.Api.DependencyInjection;
 using chat.Api.Endpoints;
 using chat.Api.Hubs;
+using chat.Api.Identity;
+using chat.Api.Messaging;
 using chat.Api.Middleware;
+using chat.Application.Push;
 
-var builder = WebApplication.CreateBuilder(args);
+var seedAdmin = args.SequenceEqual(["--seed-admin"]);
+var builder = WebApplication.CreateBuilder(seedAdmin ? [] : args);
 builder.Logging.ClearProviders();
 builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
 builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.None);
 builder.Services.AddBootstrap(builder.Configuration);
-builder.Services.AddOpenApi("v1", options =>
+if (builder.Environment.IsProduction() || builder.Configuration.GetValue<bool>("Runtime:EnforceSingleReplica"))
 {
-    options.AddDocumentTransformer((document, _, _) =>
-    {
-        document.Info.Title = "chat API";
-        document.Info.Version = "0.1.0";
-        document.Servers?.Clear();
-        return Task.CompletedTask;
-    });
+    builder.Services.AddHostedService<SingleReplicaGuard>();
+}
+builder.Services.AddAccountIdentity();
+builder.Services.AddScoped<BusinessDrafts>();
+builder.Services.AddScoped<BusinessService>();
+builder.Services.AddScoped<ConversationAccess>();
+builder.Services.AddScoped<ConversationService>();
+builder.Services.AddScoped<DeviceRegistry>();
+builder.Services.AddConversationMedia(builder.Environment.IsDevelopment());
+builder.Services.AddSingleton<RealtimeConnections>();
+builder.Services.AddScoped<RealtimeAccess>();
+builder.Services.AddHostedService<OutboxWorker>();
+builder.Services.AddHostedService<RealtimeRevocationWorker>();
+builder.Services.AddOptions<PushOptions>().BindConfiguration("Push");
+builder.Services.AddHttpClient<IPushGateway, ExpoPushGateway>(client =>
+{
+    client.BaseAddress = new Uri("https://exp.host/--/api/v2/");
+    client.Timeout = TimeSpan.FromSeconds(10);
 });
+builder.Services.AddHostedService<PushWorker>();
+builder.Services.AddHostedService<AttachmentCleanupWorker>();
+builder.Services.AddOptions<RetentionOptions>().BindConfiguration("Retention")
+    .Validate(options => options.ExpiredSessionsDays is >= 7 and <= 365 && options.CompletedWorkDays is >= 7 and <= 365
+        && options.UnattachedMediaHours is >= 24 and <= 720, "Invalid retention configuration.")
+    .ValidateOnStart();
+builder.Services.AddHostedService<RetentionWorker>();
+builder.Services.AddHostedService<WorkerBacklogMonitor>();
+builder.Services.AddHostedService<ExpiredDraftWorker>();
+builder.Services.AddHostedService<VerificationDocumentScanner>();
+builder.Services.AddOpenApi("v1", ApiDocumentation.Configure);
 
 var app = builder.Build();
+if (seedAdmin)
+{
+    await using (app)
+    {
+        await AdminSeed.RunAsync(app);
+    }
+
+    return;
+}
 
 app.UseMiddleware<RequestContextMiddleware>();
 app.UseExceptionHandler();
 app.UseStatusCodePages(context => ApiErrors.WriteAsync(context.HttpContext, context.HttpContext.Response.StatusCode));
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseHsts();
-    app.UseHttpsRedirection();
-}
-else
+app.UseProductionTransport();
+if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi().AllowAnonymous().ExcludeFromDescription();
 }
@@ -42,10 +74,16 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHealthEndpoints();
+app.MapAccountEndpoints();
+app.MapBusinessEndpoints();
+app.MapDirectoryEndpoints();
+app.MapConversationEndpoints();
+app.MapMediaEndpoints();
+app.MapDeviceEndpoints();
 app.MapHub<MessagingHub>(BootstrapServices.MessagingPath, options =>
 {
     options.CloseOnAuthenticationExpiration = true;
-}).RequireAuthorization(BootstrapServices.SignedInPolicy).ExcludeFromDescription();
+}).RequireAuthorization(AuthPrincipal.ParticipantPolicy).ExcludeFromDescription();
 
 app.Run();
 

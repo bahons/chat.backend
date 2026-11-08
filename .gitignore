@@ -4,3 +4,4 @@
 *.user
 .env
 TestResults/
+**/node_modules/

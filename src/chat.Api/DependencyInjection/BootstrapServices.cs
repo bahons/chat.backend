@@ -1,6 +1,8 @@
 using System.Threading.RateLimiting;
 using chat.Api.Endpoints;
+using chat.Api.Identity;
 using chat.Api.Middleware;
+using chat.Domain.Identity;
 using chat.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -32,7 +34,8 @@ internal static class BootstrapServices
         services.AddDbContext<ChatDbContext>((provider, options) =>
             options.UseNpgsql(provider.GetRequiredService<IOptions<DatabaseOptions>>().Value.Postgres));
         services.AddHealthChecks().AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"],
-            timeout: TimeSpan.FromSeconds(5));
+            timeout: TimeSpan.FromSeconds(5))
+            .AddCheck<ReadinessConfigurationCheck>("configuration", tags: ["ready"]);
 
         services.AddOptions<CorsSettings>().BindConfiguration("Cors")
             .Validate(options => options.AllowedOrigins.All(IsOrigin), "Cors:AllowedOrigins must contain exact HTTP(S) origins.")
@@ -40,7 +43,8 @@ internal static class BootstrapServices
         services.AddCors(options => options.AddDefaultPolicy(policy =>
         {
             var origins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
-            policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().AllowCredentials().WithExposedHeaders(RequestContextMiddleware.HeaderName);
+            policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()
+                .WithExposedHeaders(RequestContextMiddleware.HeaderName, "Retry-After");
         }));
 
         services.AddOptions<RateLimitSettings>().BindConfiguration("RateLimiting")
@@ -51,6 +55,15 @@ internal static class BootstrapServices
         services.AddOptions<RateLimiterOptions>().Configure<IOptions<RateLimitSettings>>((options, settings) =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.OnRejected = (context, _) =>
+            {
+                if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var delay))
+                {
+                    LoginAttemptLimiter.SetRetryAfter(context.HttpContext, Math.Max(1, (int)Math.Ceiling(delay.TotalSeconds)));
+                }
+
+                return ValueTask.CompletedTask;
+            };
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     context.Connection.RemoteIpAddress?.MapToIPv6().ToString() ?? "unknown",
@@ -80,7 +93,12 @@ internal static class BootstrapServices
             .Build();
         services.AddAuthorizationBuilder()
             .SetDefaultPolicy(signedIn)
-            .AddPolicy(SignedInPolicy, signedIn);
+            .AddPolicy(SignedInPolicy, signedIn)
+            .AddPolicy(AuthPrincipal.ClientPolicy, policy => policy.Combine(signedIn).RequireClaim("userKind", nameof(UserKind.CLIENT)))
+            .AddPolicy(AuthPrincipal.BusinessPolicy, policy => policy.Combine(signedIn).RequireClaim("userKind", nameof(UserKind.BUSINESS_MEMBER)))
+            .AddPolicy(AuthPrincipal.ParticipantPolicy, policy => policy.Combine(signedIn)
+                .RequireClaim("userKind", nameof(UserKind.CLIENT), nameof(UserKind.BUSINESS_MEMBER)))
+            .AddPolicy(AuthPrincipal.AdminPolicy, policy => policy.Combine(signedIn).RequireClaim("userKind", nameof(UserKind.PLATFORM_ADMIN)));
     }
 
     private static void ConfigureBearer(JwtBearerOptions options, JwtSettings settings)
@@ -102,6 +120,7 @@ internal static class BootstrapServices
         };
         options.Events = new JwtBearerEvents
         {
+            OnTokenValidated = AuthPrincipal.ValidateAsync,
             OnMessageReceived = context =>
             {
                 var request = context.Request;

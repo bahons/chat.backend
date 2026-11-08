@@ -4,12 +4,12 @@ namespace chat.Api.Middleware;
 
 internal static class ApiErrors
 {
-    public static Task WriteAsync(HttpContext context, int statusCode)
+    public static Task WriteAsync(HttpContext context, int statusCode, string? codeOverride = null, string? messageOverride = null)
     {
         var (code, message) = Describe(statusCode);
         context.Response.StatusCode = statusCode;
         return context.Response.WriteAsJsonAsync(
-            new ErrorEnvelope(new ApiError(code, message, context.TraceIdentifier)), context.RequestAborted);
+            new ErrorEnvelope(new ApiError(codeOverride ?? code, messageOverride ?? message, context.TraceIdentifier)), context.RequestAborted);
     }
 
     internal static (string Code, string Message) Describe(int statusCode) => statusCode switch

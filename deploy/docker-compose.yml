@@ -12,7 +12,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "chat", "-d", "chat"]
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "chat", "-d", "chat"]
       interval: 5s
       timeout: 3s
       retries: 12
@@ -55,6 +55,15 @@ services:
       timeout: 3s
       retries: 12
 
+  clamav:
+    image: clamav/clamav:1.4
+    profiles: ["scanning"]
+    ports:
+      - "127.0.0.1:3310:3310"
+    volumes:
+      - clamav-signatures:/var/lib/clamav
+
 volumes:
   postgres-data:
   minio-data:
+  clamav-signatures:

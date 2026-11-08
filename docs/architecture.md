@@ -31,6 +31,7 @@
 - **Object storage**: отдельные приватные пути/политики для media и verification docs.
 - **Outbox**: сохранять сообщение и событие в одной DB-транзакции; отдельный worker публикует и повторяет при сбоях. Потребители дедуплицируют events.
 - **SignalR scale-out**: согласовать Redis backplane или управляемый SignalR при нескольких инстансах; sticky sessions/transport настройки тестировать, WebSockets через WSS.
+- **Стартовое ограничение B05.3**: один активный Production API и один Outbox dispatcher на PostgreSQL БД. Старт защищён session advisory lock. События для отсутствующих подписчиков помечаются `offline`, восстанавливаемое состояние остаётся доступным через REST. Outbox, Expo и SMTP используют короткие DB-аренды, затем выполняют внешнее I/O вне транзакции. [Семантика и runbook](hardening/B05.3-results.md)
 
 ## Сценарии
 

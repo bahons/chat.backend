@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="../chat.Domain/chat.Domain.csproj" />
+    <ProjectReference Include="../chat.Contracts/chat.Contracts.csproj" />
   </ItemGroup>
 </Project>

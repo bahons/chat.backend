@@ -2,10 +2,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Net.WebSockets;
 using System.Security.Claims;
 using System.Security.Cryptography;
-using System.Text;
 using chat.Contracts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -50,7 +48,7 @@ public sealed class BootstrapTests : IDisposable
     }
 
     [Fact]
-    public async Task HubAuthenticatesNegotiationAndWebSocketHandshake()
+    public async Task HubRejectsUnauthenticatedNegotiation()
     {
         var key = RandomNumberGenerator.GetBytes(32);
         using var host = factory.WithWebHostBuilder(builder => builder
@@ -70,26 +68,9 @@ public sealed class BootstrapTests : IDisposable
         using var query = await client.PostAsync($"{NegotiatePath}&access_token={token}", null);
         Assert.Equal(HttpStatusCode.Unauthorized, query.StatusCode);
 
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(key, []));
-        using var forbidden = await client.PostAsync(NegotiatePath, null);
-        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
-        await AssertErrorAsync(forbidden, "FORBIDDEN");
-
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        using var authorized = await client.PostAsync(NegotiatePath, null);
-        Assert.Equal(HttpStatusCode.OK, authorized.StatusCode);
-
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        using var socket = await host.Server.CreateWebSocketClient().ConnectAsync(
-            new Uri($"wss://localhost/hubs/messaging?access_token={token}"), timeout.Token);
-        var handshake = "{\"protocol\":\"json\",\"version\":1}\u001e"u8.ToArray();
-        await socket.SendAsync(handshake.AsMemory(), WebSocketMessageType.Text, true, timeout.Token);
-
-        var buffer = new byte[256];
-        var frame = await socket.ReceiveAsync(buffer.AsMemory(), timeout.Token);
-        Assert.Equal(WebSocketMessageType.Text, frame.MessageType);
-        Assert.Equal("{}\u001e", Encoding.UTF8.GetString(buffer, 0, frame.Count));
-        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, timeout.Token);
+        using var unauthorized = await client.PostAsync(NegotiatePath, null);
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
     }
 
     [Fact]

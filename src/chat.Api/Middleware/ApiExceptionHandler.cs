@@ -6,6 +6,12 @@ internal sealed partial class ApiExceptionHandler(ILogger<ApiExceptionHandler> l
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
     {
+        if (exception is ApiFailure failure)
+        {
+            await ApiErrors.WriteAsync(context, failure.StatusCode, failure.Code, failure.PublicMessage);
+            return true;
+        }
+
         var statusCode = exception is BadHttpRequestException badRequest
             ? badRequest.StatusCode
             : StatusCodes.Status500InternalServerError;
