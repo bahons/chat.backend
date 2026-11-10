@@ -15,19 +15,22 @@ internal sealed partial class OutboxWorker(IServiceScopeFactory scopes, Realtime
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-        while (await timer.WaitForNextTickAsync(stoppingToken))
+        while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                for (var i = 0; i < 25 && await DispatchNextAsync(stoppingToken); i++)
+                if (await DispatchNextAsync(stoppingToken))
                 {
+                    continue;
                 }
             }
             catch (Exception) when (!stoppingToken.IsCancellationRequested)
             {
                 DispatchFailed(logger);
             }
+
+            // Poll when idle or unavailable; an existing backlog must not wait for another tick.
+            await Task.Delay(TimeSpan.FromSeconds(1), clock, stoppingToken);
         }
     }
 

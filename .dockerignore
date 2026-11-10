@@ -1,0 +1,12 @@
+.git
+.vs
+**/bin
+**/obj
+**/node_modules
+.env
+.env.*
+.release.lock
+deploy/production/tls
+backups
+TestResults
+artifacts

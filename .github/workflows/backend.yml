@@ -76,8 +76,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          dotnet publish src/chat.Api -c Release --no-restore -p:UseAppHost=false -o "$RUNNER_TEMP/chat-image"
-          docker build -f deploy/Dockerfile -t chat-backend:ci "$RUNNER_TEMP/chat-image"
+          docker build -f deploy/Dockerfile.production -t chat-backend:ci .
           docker run --rm --entrypoint dotnet chat-backend:ci --list-runtimes
           docker save -o "$RUNNER_TEMP/chat-backend.tar" chat-backend:ci
           docker run --rm -v "$RUNNER_TEMP/chat-backend.tar:/image.tar:ro" aquasec/trivy:0.76.2 image \

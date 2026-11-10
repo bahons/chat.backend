@@ -1,10 +1,8 @@
-using chat.Api.Businesses;
 using chat.Api.Endpoints;
 using chat.Api.Middleware;
 using chat.Application.Messaging;
 using chat.Contracts;
 using chat.Contracts.Messaging;
-using chat.Domain.Businesses;
 using chat.Domain.Identity;
 using chat.Domain.Messaging;
 using chat.Infrastructure.Persistence;
@@ -12,29 +10,29 @@ using Microsoft.EntityFrameworkCore;
 
 namespace chat.Api.Messaging;
 
-internal sealed class ConversationService(ChatDbContext db, ConversationAccess access, BusinessService businesses,
-    TimeProvider clock)
+internal sealed class ConversationService(ChatDbContext db, ConversationAccess access, TimeProvider clock)
 {
     public async Task<ConversationView> CreateAsync(Guid actor, Guid businessId, CancellationToken ct)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        var business = await businesses.LockBusinessAsync(businessId, ct);
-        if (business.Status != BusinessStatus.VERIFIED || !business.IsActive)
+        if (!await access.LockActiveBusinessAsync(businessId, ct))
         {
             throw new ApiFailure(StatusCodes.Status404NotFound);
         }
 
-        var conversation = await db.Conversations.SingleOrDefaultAsync(row => row.ClientUserId == actor
-            && row.BusinessId == businessId, ct);
-        if (conversation is null)
-        {
-            var now = PostgresTimestamp();
-            conversation = new Conversation { ClientUserId = actor, BusinessId = businessId, CreatedAt = now, UpdatedAt = now };
-            db.Conversations.Add(conversation);
-            await db.SaveChangesAsync(ct);
-        }
+        // Keep suspension serialized without exclusively locking the entire business inbox.
+        // The unique client/business index arbitrates concurrent creates, including retries.
+        var now = PostgresTimestamp();
+        var candidateId = Guid.NewGuid();
+        await db.Database.ExecuteSqlAsync($"""
+            INSERT INTO "Conversations" ("Id", "ClientUserId", "BusinessId", "CreatedAt", "UpdatedAt")
+            VALUES ({candidateId}, {actor}, {businessId}, {now}, {now})
+            ON CONFLICT ("ClientUserId", "BusinessId") DO NOTHING
+            """, ct);
+        var conversationId = await db.Conversations.Where(row => row.ClientUserId == actor && row.BusinessId == businessId)
+            .Select(row => row.Id).SingleAsync(ct);
 
-        var view = await DetailAsync(conversation.Id, actor, UserKind.CLIENT, ct);
+        var view = await DetailAsync(conversationId, actor, UserKind.CLIENT, ct);
         await transaction.CommitAsync(ct);
         return view;
     }
@@ -100,7 +98,7 @@ internal sealed class ConversationService(ChatDbContext db, ConversationAccess a
         var rows = await query.OrderByDescending(row => row.CreatedAt).ThenByDescending(row => row.Id)
             .Take(page.Limit + 1).ToListAsync(ct);
         var messageIds = rows.Take(page.Limit).Select(row => row.Id).ToArray();
-        var attachments = await db.Attachments.AsNoTracking().Where(row => row.MessageId != null
+        var attachments = await db.Attachments.AsNoTracking().Where(row => row.ConversationId == id && row.MessageId != null
                 && messageIds.Contains(row.MessageId.Value))
             .OrderBy(row => row.Id).ToListAsync(ct);
         var byMessage = attachments.ToLookup(row => row.MessageId);
@@ -124,7 +122,7 @@ internal sealed class ConversationService(ChatDbContext db, ConversationAccess a
             && message.AuthorUserId == actor && message.ClientMessageId == request.ClientMessageId, ct);
         if (existing is not null)
         {
-            var attached = await db.Attachments.AsNoTracking().Where(row => row.MessageId == existing.Id)
+            var attached = await db.Attachments.AsNoTracking().Where(row => row.ConversationId == id && row.MessageId == existing.Id)
                 .OrderBy(row => row.Id).ToListAsync(ct);
             return MessagePresentation.View(existing, attached);
         }

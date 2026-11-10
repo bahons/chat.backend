@@ -48,6 +48,7 @@ internal sealed partial class WorkerBacklogMonitor(IServiceScopeFactory scopes, 
     private async Task CheckAsync<T>(string queue, IQueryable<T> overdue, CancellationToken ct)
     {
         var count = await overdue.Take(1001).CountAsync(ct);
+        WorkerMetrics.Overdue.Record(count, new KeyValuePair<string, object?>("queue", queue));
         if (count > 0)
         {
             Backlog(logger, queue, count);

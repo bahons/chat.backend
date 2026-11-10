@@ -1,0 +1,109 @@
+name: chat-production
+
+x-api: &api
+  image: chat-backend:${APP_TAG:-local}
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile.production
+  init: true
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  read_only: true
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=64m"]
+  logging:
+    driver: json-file
+    options: {max-size: "10m", max-file: "5"}
+  environment: &api-env
+    ASPNETCORE_ENVIRONMENT: Production
+    ASPNETCORE_URLS: https://+:8443
+    ASPNETCORE_FORWARDEDHEADERS_ENABLED: "false"
+    ConnectionStrings__Postgres: "Host=postgres;Database=chat;Username=chat;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD};GSS Encryption Mode=Disable;Timeout=5;Command Timeout=30;Maximum Pool Size=50"
+    AllowedHosts: "${API_DOMAIN:?Set API_DOMAIN};chat-backend.internal"
+    ReverseProxy__KnownProxies__0: ${DOCKER_GATEWAY:-10.253.84.1}
+    ReverseProxy__KnownProxies__1: "127.0.0.1"
+    Kestrel__Certificates__Default__Path: /run/tls/backend.crt
+    Kestrel__Certificates__Default__KeyPath: /run/tls/backend.key
+    Jwt__Issuer: ${JWT_ISSUER:-chat-production}
+    Jwt__Audience: chat-api
+    Jwt__SigningKeyBase64: ${JWT_SIGNING_KEY_BASE64:?Set JWT_SIGNING_KEY_BASE64}
+    AccountEmail__QueueKeyBase64: ${MAIL_QUEUE_KEY_BASE64:?Set MAIL_QUEUE_KEY_BASE64}
+    AccountEmail__Host: ${SMTP_HOST:?Set SMTP_HOST}
+    AccountEmail__Port: ${SMTP_PORT:-587}
+    AccountEmail__EnableTls: "true"
+    AccountEmail__From: ${SMTP_FROM:?Set SMTP_FROM}
+    AccountEmail__Username: ${SMTP_USERNAME:?Set SMTP_USERNAME}
+    AccountEmail__Password: ${SMTP_PASSWORD:?Set SMTP_PASSWORD}
+    ObjectStorage__ServiceUrl: ${S3_URL:?Set S3_URL to public HTTPS S3 endpoint}
+    ObjectStorage__Region: ${S3_REGION:-us-east-1}
+    ObjectStorage__Bucket: ${S3_BUCKET:-chat-media}
+    ObjectStorage__AccessKey: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY}
+    ObjectStorage__SecretKey: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
+    ObjectStorage__CreateBucket: "false"
+    FileScan__Host: ${CLAMAV_HOST:?Set CLAMAV_HOST}
+    FileScan__Port: ${CLAMAV_PORT:-3310}
+    Cors__AllowedOrigins__0: ${WEB_ORIGIN:?Set exact HTTPS WEB_ORIGIN}
+    Retention__Approved: ${RETENTION_APPROVED:-false}
+    Retention__LegalHold: ${RETENTION_LEGAL_HOLD:-false}
+    Push__Enabled: ${PUSH_ENABLED:-false}
+    Push__AccessToken: ${EXPO_ACCESS_TOKEN:-}
+  networks: [edge, database]
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    shm_size: 256mb
+    environment:
+      POSTGRES_DB: chat
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?Set POSTGRES_ADMIN_PASSWORD}
+      CHAT_DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: --data-checksums --auth-host=scram-sha-256
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./production/init-db.sh:/docker-entrypoint-initdb.d/10-chat.sh:ro
+    networks: [database]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "chat", "-d", "chat"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "5"}
+
+  migrate:
+    <<: *api
+    profiles: [ops]
+    command: ["--migrate"]
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  api:
+    <<: *api
+    restart: unless-stopped
+    stop_grace_period: 30s
+    volumes:
+      - ./production/tls/backend:/run/tls:ro
+    depends_on:
+      postgres: {condition: service_healthy}
+    ports:
+      - "127.0.0.1:${API_PORT:-15105}:8443"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--max-time", "8", "--cacert", "/run/tls/ca.crt", "--resolve", "chat-backend.internal:8443:127.0.0.1", "-H", "X-Forwarded-For: 127.0.0.1", "-H", "X-Forwarded-Proto: https", "https://chat-backend.internal:8443/health/ready"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: ${DOCKER_SUBNET:-10.253.84.0/24}
+          gateway: ${DOCKER_GATEWAY:-10.253.84.1}
+  database:
+    internal: true
+
+volumes:
+  postgres-data:

@@ -3,5 +3,10 @@
 .vs/
 *.user
 .env
+.env.production
+.release.lock
+deploy/production/tls/
+backups/
+artifacts/chat-backend-server.tar.gz
 TestResults/
 **/node_modules/

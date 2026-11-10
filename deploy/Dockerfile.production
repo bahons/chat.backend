@@ -1,0 +1,19 @@
+ARG DOTNET_SDK=10.0.403
+ARG ASPNET_RUNTIME=10.0.14
+FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_SDK} AS build
+WORKDIR /source
+COPY global.json Directory.Build.props chat.sln ./
+COPY .config/ .config/
+COPY src/ src/
+RUN dotnet restore src/chat.Api/chat.Api.csproj
+RUN dotnet publish src/chat.Api/chat.Api.csproj -c Release --no-restore -p:UseAppHost=false -o /publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:${ASPNET_RUNTIME} AS runtime
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=build --chown=app:app /publish/ ./
+USER app
+EXPOSE 8443
+ENTRYPOINT ["dotnet", "chat.Api.dll"]

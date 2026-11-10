@@ -279,6 +279,9 @@ namespace chat.Infrastructure.Persistence.Migrations
                     b.HasIndex("AvailableAt", "Id")
                         .HasFilter("\"CompletedAt\" IS NULL");
 
+                    b.HasIndex("CompletedAt", "Id")
+                        .HasFilter("\"CompletedAt\" IS NOT NULL");
+
                     b.ToTable("AccountMails");
                 });
 
@@ -338,6 +341,8 @@ namespace chat.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TokenHash")
                         .IsUnique();
+
+                    b.HasIndex("ExpiresAt", "Id");
 
                     b.HasIndex("UserId", "FamilyId");
 
@@ -674,6 +679,9 @@ namespace chat.Infrastructure.Persistence.Migrations
                     b.HasIndex("AvailableAt", "Id")
                         .HasFilter("\"CompletedAt\" IS NULL");
 
+                    b.HasIndex("CompletedAt", "Id")
+                        .HasFilter("\"CompletedAt\" IS NOT NULL");
+
                     b.ToTable("OutboxMessages");
                 });
 
@@ -730,6 +738,9 @@ namespace chat.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("AvailableAt", "Id")
                         .HasFilter("\"CompletedAt\" IS NULL");
+
+                    b.HasIndex("CompletedAt", "Id")
+                        .HasFilter("\"CompletedAt\" IS NOT NULL");
 
                     b.HasIndex("EventId", "DeviceId")
                         .IsUnique();

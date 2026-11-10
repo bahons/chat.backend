@@ -197,9 +197,15 @@ public sealed class IntegrityTests(BackendFixture backend) : IClassFixture<Backe
     [Trait("Dependency", "Docker")]
     public async Task RetentionRespectsHoldAndResumesBoundedCleanupAfterFailure()
     {
-        using var enabled = backend.Host.WithWebHostBuilder(builder => builder.UseSetting("Retention:Approved", "true"));
+        using var enabled = backend.Host.WithWebHostBuilder(builder => builder.UseSetting("Retention:Approved", "true")
+            .ConfigureServices(services => services.Remove(services.Single(service => service.ServiceType == typeof(IHostedService)
+                && service.ImplementationType == typeof(RetentionWorker)))));
         using var held = backend.Host.WithWebHostBuilder(builder => builder.UseSetting("Retention:Approved", "true")
             .UseSetting("Retention:LegalHold", "true"));
+        // Invoke batches explicitly, without racing the scheduled drain against assertions.
+        using var worker = new RetentionWorker(enabled.Services.GetRequiredService<IServiceScopeFactory>(),
+            enabled.Services.GetRequiredService<IOptionsMonitor<RetentionOptions>>(), TimeProvider.System,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<RetentionWorker>.Instance);
         await using var scope = backend.Host.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
         var actor = await SeedActorAsync(db);
@@ -256,7 +262,6 @@ public sealed class IntegrityTests(BackendFixture backend) : IClassFixture<Backe
         Assert.False(await held.Services.GetServices<IHostedService>().OfType<AttachmentCleanupWorker>().Single().CleanNextAsync(default));
         Assert.False(await db.Attachments.AnyAsync(row => row.Id == staleUpload.Id && row.RetiredAt != null));
 
-        var worker = enabled.Services.GetServices<IHostedService>().OfType<RetentionWorker>().Single();
         await db.Database.ExecuteSqlRawAsync("""
             CREATE FUNCTION retention_test_error() RETURNS trigger LANGUAGE plpgsql AS $body$
             BEGIN RAISE EXCEPTION 'Simulated retention failure'; END

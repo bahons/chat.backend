@@ -25,6 +25,7 @@ internal sealed class RefreshSessionConfiguration : IEntityTypeConfiguration<Ref
     {
         entity.HasIndex(session => session.TokenHash).IsUnique();
         entity.HasIndex(session => new { session.UserId, session.FamilyId });
+        entity.HasIndex(session => new { session.ExpiresAt, session.Id });
         entity.Property(session => session.TokenHash).HasMaxLength(64);
         entity.HasOne<User>().WithMany().HasForeignKey(session => session.UserId);
     }

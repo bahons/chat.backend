@@ -6,9 +6,12 @@ using chat.Api.Identity;
 using chat.Api.Messaging;
 using chat.Api.Middleware;
 using chat.Application.Push;
+using chat.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 var seedAdmin = args.SequenceEqual(["--seed-admin"]);
-var builder = WebApplication.CreateBuilder(seedAdmin ? [] : args);
+var migrate = args.SequenceEqual(["--migrate"]);
+var builder = WebApplication.CreateBuilder(seedAdmin || migrate ? [] : args);
 builder.Logging.ClearProviders();
 builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
 builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.None);
@@ -38,7 +41,10 @@ builder.Services.AddHostedService<PushWorker>();
 builder.Services.AddHostedService<AttachmentCleanupWorker>();
 builder.Services.AddOptions<RetentionOptions>().BindConfiguration("Retention")
     .Validate(options => options.ExpiredSessionsDays is >= 7 and <= 365 && options.CompletedWorkDays is >= 7 and <= 365
-        && options.UnattachedMediaHours is >= 24 and <= 720, "Invalid retention configuration.")
+        && options.UnattachedMediaHours is >= 24 and <= 720
+        && options.SweepIntervalSeconds is >= 1 and <= 600
+        && options.MaxBatchesPerSweep is >= 1 and <= 1000
+        && options.SweepBudgetSeconds is >= 1 and <= 60, "Invalid retention configuration.")
     .ValidateOnStart();
 builder.Services.AddHostedService<RetentionWorker>();
 builder.Services.AddHostedService<WorkerBacklogMonitor>();
@@ -47,6 +53,16 @@ builder.Services.AddHostedService<VerificationDocumentScanner>();
 builder.Services.AddOpenApi("v1", ApiDocumentation.Configure);
 
 var app = builder.Build();
+if (migrate)
+{
+    await using (app)
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<ChatDbContext>().Database.MigrateAsync();
+        Console.WriteLine("Database migrations applied.");
+    }
+    return;
+}
 if (seedAdmin)
 {
     await using (app)

@@ -23,5 +23,6 @@ internal sealed class WorkConfiguration : IEntityTypeConfiguration<OutboxMessage
     {
         entity.Property(row => row.LeaseId).IsConcurrencyToken();
         entity.Property(row => row.Outcome).HasMaxLength(24);
+        entity.HasIndex(row => new { row.CompletedAt, row.Id }).HasFilter("\"CompletedAt\" IS NOT NULL");
     }
 }
