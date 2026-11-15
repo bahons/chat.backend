@@ -2,6 +2,7 @@ namespace chat.Api.Identity;
 
 internal sealed class IdentityOptions
 {
+    public bool RequireConfirmedEmail { get; set; } = true;
     public int AccessMinutes { get; set; } = 10;
     public int RefreshDays { get; set; } = 30;
     public int AuthRequestsPerMinute { get; set; } = 12;

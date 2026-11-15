@@ -3,6 +3,14 @@
 ## Границы доверия
 
 - Public: регистрация клиента, вход, **веб-заявка бизнеса**; protection: rate limit, captcha/abuse defense where needed, проверка email, валидация юридических атрибутов и документов.
+
+Временный режим без подтверждения email: `Identity:RequireConfirmedEmail=false`
+(`REQUIRE_CONFIRMED_EMAIL=false` в production Compose). Регистрация не отправляет письмо;
+вход, refresh и проверки текущей сессии допускают неподтверждённый email. Поле
+`emailVerified` сохраняет фактическое состояние. По умолчанию настройка `true`;
+после её возврата неподтверждённые аккаунты теряют доступ до подтверждения email.
+Модерация компаний и проверки ролей продолжают действовать. Сброс пароля требует
+подтверждённого email и настроенной отправки писем.
 - Authenticated CLIENT: каталог VERIFIED, собственные диалоги; запуск нового диалога только со VERIFIED+ACTIVE.
 - Authenticated BUSINESS_MEMBER: только свой бизнес, собственные доступные диалоги, запрет мобильного доступа до бизнес-верификации. OWNER/ADMIN/AGENT — минимально необходимые полномочия.
 - PLATFORM_ADMIN: создаётся только защищённой административной процедурой (seed/CLI/manual invite) и может проводить review; не публичная self-signup роль. Все решения журналировать.
@@ -60,3 +68,14 @@
 - Retention включается после согласования владельцем данных, а hold действует на scheduled cleanup. Внешние lifecycle rules, backups и восстановление проверяются отдельно. [Таблица retention](data-model.md#retention-b054)
 
 Threat model, OWASP ASVS/MASVS relevant guidance, dependency/SAST/secret scans, audit, abuse reports/blocking, rate limits per actor and IP, backups + restore test, secret rotation, data residency/legal review, retention/deletion/export policies, monitoring without PII.
+
+
+## B06. Media и звонки
+
+ffprobe запускается без shell, с локальным временным файлом, ограничением форматов и protocol_whitelist=file. API не принимает URL для media-probe. На процесс отведено 15 секунд, вывод ограничен 64 КиБ, одновременно допускается два probe. Временные файлы удаляются в finally. Для production нужны актуальный security patch FFmpeg, непривилегированный пользователь, memory/CPU limits контейнера, приватный tmpfs не менее 192 МиБ и мониторинг 503. Ограничение max_alloc=64 МиБ действует на отдельную аллокацию, общий memory limit задаёт ОС/контейнер. ClamAV должен допускать поток до 50 МиБ. Отсутствие инструмента или сканера сохраняет PENDING и возвращает 503.
+
+Состояние Call изменяется под блокировкой conversation и строки Call. Текущий пользователь, семейство, активность verified бизнеса и membership перечитываются. После принятия только инициатор и выбранный собеседник с исходными семействами могут передавать SDP/ICE или получать TURN. Вызовы не создают новые диалоги. Reconnect допускается в том же семействе, новый login не захватывает выбранного участника.
+
+SDP/ICE не сохраняются в БД, Outbox или application logs. Исключения Hub возвращают нейтральные сообщения. Состояние/приглашение Outbox содержит только ID, timestamps и код результата. Перед отправкой проверяются активная сессия и текущий ACL. В коротком промежутке между проверкой и доставкой остаётся распределённая гонка, как в B05. TTL worker закрывает состояние при отзыве. Физический P2P media-path не проходит через API.
+
+TURN credentials краткоживущие, выпускаются по HMAC-SHA1 coturn REST auth с отдельным секретом. Утечка credential даёт relay-доступ до expiresAt. Завершение Call не отзывает уже выпущенный credential и не разрывает существующий P2P-поток. Клиенты обязаны закрывать tracks/peer connection при отказе, logout и terminal state. Если требуется принудительное сетевое прекращение, нужны relay-only topology и отдельный протокол управления allocations, который в B06 не реализован.

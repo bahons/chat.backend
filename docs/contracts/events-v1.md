@@ -1,6 +1,6 @@
-# Realtime contract — ASP.NET Core SignalR (v0.5.0)
+# Realtime contract — ASP.NET Core SignalR (v0.6.0)
 
-**Статус:** baseline, одинаковый в backend/frontend/mobile. Маршруты и события этапа 1 реализованы в B05. Сигналинг звонков запланирован на B06.
+**Статус:** baseline, одинаковый в backend/frontend/mobile. Маршруты и события этапа 1 реализованы в B05. Сигналинг звонков реализован в B06. Клиенты phase 2 подключаются после обновления своих контрактов.
 
 **Технология:** **ASP.NET Core SignalR**, Hub `https://<api-host>/hubs/messaging`, TLS/WSS, SignalR protocol JSON. Browser/server .NET клиент: `Microsoft.AspNetCore.SignalR.Client`; React Native клиент: официальный `@microsoft/signalr` после проверки RN/transport compatibility. Имена Hub methods и клиентских событий ниже чувствительны к контракту и тестируются кросс-клиентски.
 
@@ -71,3 +71,18 @@ All **server→client** events (в том числе вызовы) приход�
 
 - Используйте имена методов и событий из таблиц этого контракта. При reconnect выполняйте REST reconciliation и дедупликацию по `eventId`.
 - Backend публикует версии Hub contract + проверяет тестами .NET и JS clients. При будущих breaking changes — новая версия с migration window; любые изменения копируются в три репозитория и согласуются PR.
+
+## B06. Семантика звонков v0.6.0
+
+Имена методов и событий в таблице этапа 2 сохранены. Методы используют позиционные аргументы. Для RejectCall передавайте второй аргумент reason как строку до 64 символов или null. Сервер сохраняет только код DECLINED, текст причины не хранит.
+
+- AcceptCall(callId) атомарно выбирает одного сотрудника для клиентского вызова либо клиентскую сторону для вызова сотрудника. Исходное семейство инициатора и семейство принимающего фиксируются в Call. Восстановление через новый WebSocket с тем же действующим семейством разрешено.
+- SendOffer(callId, sdp) доступен только инициатору после принятия. SendAnswer(callId, sdp) доступен только выбранному собеседнику после offer. При ответе CONNECTING переходит в ACTIVE. ACTIVE означает завершённый signaling, физическое прохождение медиа сервер не подтверждает.
+- SendIceCandidate(callId, candidate) принимает объект {candidate,sdpMid,sdpMLineIndex,usernameFragment?}. candidate — строка candidate:... до 2048 символов без управляющих символов, sdpMid до 64, sdpMLineIndex 0–32 или null, usernameFragment до 256. SDP начинается с v=0 и ограничен 24 КиБ UTF-8. Общий входящий Hub frame ограничен 32 КиБ. До 60 call-команд за 10 секунд на соединение, до четырёх соединений аккаунта.
+- RejectCall разрешён принимающей стороне в RINGING. HangupCall и REST end доступны выбранным сторонам, включая инициатора во время звонка. Чужие call IDs, чужая компания и непринятый сотрудник не получают signaling или ICE-конфигурацию.
+- CallIncoming.payload = {callId,conversationId,kind,expiresAt}. Приглашения получают текущие разрешённые соединения противоположной стороны без обязательного JoinConversation. Push для звонков в B06 не добавлен.
+- CallStateChanged.payload = {callId,state,endedReason,revision,expiresAt}. После выбора оператора обновления получают только выбранные семейства. События состояния/приглашения сохраняются в Outbox в транзакции Call. Клиенты игнорируют старые revision и перечитывают GET /v1/calls/{id}.
+- CallOffer/CallAnswer.payload = {callId,sdp,revision}; CallIceCandidate.payload = {callId,candidate,revision}. Envelope eventVersion остаётся 1. SDP/ICE передаются напрямую через SignalR только выбранной другой стороне, без сохранения, Outbox и логирования содержимого. До передачи проверяются актуальные ACL, сессия и live revision.
+- При reconnect клиент читает Call через REST и при необходимости инициатор повторяет offer, собеседник — answer. SDP/ICE не восстанавливаются из БД. Нужные ICE candidates генерируются заново. Повтор offer повышает revision и начинает новую попытку согласования.
+- TTL RINGING — 45 секунд, CONNECTING — 60 секунд от accept/offer. Жёсткая длительность звонка — два часа от создания. Worker проверяет ACL и TTL партиями по 256 каждые две секунды с обходом по ID, без starvation поздних записей. Нагрузка и сбои БД могут увеличить задержку обхода. REST/signaling также проверяют срок и права.
+- Истечение RINGING даёт MISSED/TIMEOUT, остальные live states — ENDED/TIMEOUT. Отзыв аккаунта, семейства или членства даёт ENDED/ACCESS_REVOKED. Клиенты прекращают media tracks при терминальном состоянии или отказе ACL. Уже выданные TURN credentials остаются годными до своего expiresAt, сервер не может мгновенно оборвать P2P-медиапоток.

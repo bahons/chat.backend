@@ -4,6 +4,10 @@ using System.Net.Http.Json;
 using System.Net.WebSockets;
 using System.Text;
 using chat.Contracts.Identity;
+using chat.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace chat.IntegrationTests;
@@ -12,6 +16,52 @@ public sealed class IdentityTests(BackendFixture backend) : IClassFixture<Backen
 {
     private const string Password = "integration-test-password";
     private const string NewPassword = "updated-integration-test-password";
+
+    [Fact]
+    [Trait("Dependency", "Docker")]
+    public async Task OptionalEmailAllowsAccessAndRefreshUntilRequirementReturns()
+    {
+        using var host = backend.Host.WithWebHostBuilder(builder => builder.UseSetting("Identity:RequireConfirmedEmail", "false"));
+        using var client = host.CreateClient();
+        var email = $"{Guid.NewGuid():N}@example.test";
+        using var registration = await client.PostAsJsonAsync("/v1/auth/client/register", new RegisterClientRequest(email, Password, "Client"));
+        Assert.Equal(HttpStatusCode.Accepted, registration.StatusCode);
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
+            var user = await db.Users.SingleAsync(row => row.Email == email);
+            Assert.Null(user.EmailVerifiedAt);
+            Assert.Null(user.VerificationHash);
+            Assert.False(await db.AccountMails.AnyAsync(row => row.UserId == user.Id));
+        }
+
+        var tokens = await LoginAsync(client, email, Password);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
+        var me = await client.GetFromJsonAsync<MeResponse>("/v1/me");
+        Assert.False(me!.EmailVerified);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using (var socket = await host.Server.CreateWebSocketClient().ConnectAsync(
+            new Uri($"wss://localhost/hubs/messaging?access_token={tokens.AccessToken}"), timeout.Token))
+        {
+            await socket.SendAsync("{\"protocol\":\"json\",\"version\":1}\u001e"u8.ToArray().AsMemory(), WebSocketMessageType.Text, true, timeout.Token);
+            var buffer = new byte[256];
+            var frame = await socket.ReceiveAsync(buffer.AsMemory(), timeout.Token);
+            Assert.Equal("{}\u001e", Encoding.UTF8.GetString(buffer, 0, frame.Count));
+            await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, timeout.Token);
+        }
+
+        using var refresh = await client.PostAsJsonAsync("/v1/auth/refresh", new RefreshRequest(tokens.RefreshToken));
+        Assert.Equal(HttpStatusCode.OK, refresh.StatusCode);
+        var rotated = (await refresh.Content.ReadFromJsonAsync<AuthTokens>())!;
+        using var required = backend.Host.CreateClient();
+        required.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", rotated.AccessToken);
+        using var denied = await required.GetAsync("/v1/me");
+        Assert.Equal(HttpStatusCode.Unauthorized, denied.StatusCode);
+        using var deniedRefresh = await required.PostAsJsonAsync("/v1/auth/refresh", new RefreshRequest(rotated.RefreshToken));
+        Assert.Equal(HttpStatusCode.Unauthorized, deniedRefresh.StatusCode);
+        using var deniedLogin = await required.PostAsJsonAsync("/v1/auth/login", new LoginRequest(email, Password));
+        Assert.Equal(HttpStatusCode.Forbidden, deniedLogin.StatusCode);
+    }
 
     [Fact]
     [Trait("Dependency", "Docker")]

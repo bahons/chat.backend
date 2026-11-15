@@ -1,4 +1,5 @@
 using chat.Api.Businesses;
+using chat.Api.Calls;
 using chat.Api.DependencyInjection;
 using chat.Api.Endpoints;
 using chat.Api.Hubs;
@@ -26,6 +27,11 @@ builder.Services.AddScoped<BusinessService>();
 builder.Services.AddScoped<ConversationAccess>();
 builder.Services.AddScoped<ConversationService>();
 builder.Services.AddScoped<DeviceRegistry>();
+builder.Services.AddOptions<CallOptions>().BindConfiguration("Calls");
+builder.Services.AddSingleton<TurnCredentials>();
+builder.Services.AddScoped<CallService>();
+builder.Services.AddScoped<CallDelivery>();
+builder.Services.AddHostedService<CallWorker>();
 builder.Services.AddConversationMedia(builder.Environment.IsDevelopment());
 builder.Services.AddSingleton<RealtimeConnections>();
 builder.Services.AddScoped<RealtimeAccess>();
@@ -78,9 +84,17 @@ app.UseExceptionHandler();
 app.UseStatusCodePages(context => ApiErrors.WriteAsync(context.HttpContext, context.HttpContext.Response.StatusCode));
 
 app.UseProductionTransport();
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))
 {
     app.MapOpenApi().AllowAnonymous().ExcludeFromDescription();
+    app.UseSwaggerUI(options =>
+    {
+        options.RoutePrefix = "swagger";
+        options.SwaggerEndpoint("../openapi/v1.json", "chat API v1");
+        options.DocumentTitle = "chat API — Swagger";
+        options.ConfigObject.AdditionalItems["persistAuthorization"] = false;
+        options.ConfigObject.AdditionalItems["validatorUrl"] = null;
+    });
 }
 
 app.UseRouting();
@@ -96,6 +110,7 @@ app.MapDirectoryEndpoints();
 app.MapConversationEndpoints();
 app.MapMediaEndpoints();
 app.MapDeviceEndpoints();
+app.MapCallEndpoints();
 app.MapHub<MessagingHub>(BootstrapServices.MessagingPath, options =>
 {
     options.CloseOnAuthenticationExpiration = true;

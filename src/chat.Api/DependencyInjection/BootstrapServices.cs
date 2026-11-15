@@ -85,7 +85,11 @@ internal static class BootstrapServices
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
             .Configure<IOptions<JwtSettings>>((options, settings) => ConfigureBearer(options, settings.Value));
 
-        services.AddSignalR();
+        services.AddSignalR(options =>
+        {
+            options.MaximumReceiveMessageSize = 32768;
+            options.EnableDetailedErrors = false;
+        });
 
         var signedIn = new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme)
             .RequireAuthenticatedUser()

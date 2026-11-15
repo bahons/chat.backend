@@ -4,6 +4,7 @@ using chat.Domain.Identity;
 using chat.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace chat.Api.Identity;
 
@@ -33,7 +34,8 @@ internal static class AuthPrincipal
 
         var db = context.HttpContext.RequestServices.GetRequiredService<ChatDbContext>();
         var now = context.HttpContext.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow();
-        var kind = await db.Users.Where(user => user.Id == userId && user.IsActive && user.EmailVerifiedAt != null
+        var requireEmail = context.HttpContext.RequestServices.GetRequiredService<IOptions<IdentityOptions>>().Value.RequireConfirmedEmail;
+        var kind = await db.Users.Where(user => user.Id == userId && user.IsActive && (!requireEmail || user.EmailVerifiedAt != null)
                 && ActiveSessions(db, now).Any(session => session.UserId == userId && session.FamilyId == familyId))
             .Select(user => (UserKind?)user.Kind).SingleOrDefaultAsync(context.HttpContext.RequestAborted);
         if (kind is null)

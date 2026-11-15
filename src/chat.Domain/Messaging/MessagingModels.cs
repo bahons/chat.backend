@@ -1,7 +1,7 @@
 namespace chat.Domain.Messaging;
 
 public enum ParticipantSide { CLIENT, BUSINESS }
-public enum MessageType { TEXT, IMAGE, FILE }
+public enum MessageType { TEXT, IMAGE, FILE, AUDIO, VIDEO }
 
 public sealed class Conversation
 {

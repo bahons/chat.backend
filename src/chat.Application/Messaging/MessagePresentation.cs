@@ -12,6 +12,7 @@ public static class MessagePresentation
     public static MessageView View(Message message, IEnumerable<Attachment> attachments) =>
         new(message.Id, message.ConversationId, message.ClientMessageId, message.AuthorSide.ToString(),
             message.Type.ToString(), message.Text,
-            attachments.Select(row => new MessageAttachmentView(row.Id, row.ContentType, row.Size)).ToArray(),
+            attachments.Select(row => new MessageAttachmentView(row.Id, row.ContentType, row.Size,
+                row.DurationMilliseconds, row.Width, row.Height, row.AudioCodec, row.VideoCodec)).ToArray(),
             message.CreatedAt);
 }

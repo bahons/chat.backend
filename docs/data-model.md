@@ -1,4 +1,4 @@
-# Backend: модель данных B01–B05
+# Backend: модель данных B01–B06
 
 Логическая модель для EF Core migrations (Npgsql/PostgreSQL). Идентификаторы UUID, времена timestamptz UTC. Реализованные ограничения и политика B05.4 приведены ниже.
 
@@ -18,7 +18,7 @@
 | `DeviceRegistration` | `id`, `userId`, `familyId`, `pushToken`, `revokedAt?`, `releasedAt?` | Уникальный Expo-токен, передача только после release владельцем |
 | `AuditLog` | `id`, `actorId`, `action`, `entityType`, `entityId`, `createdAt`, `metadata` | no raw documents or message text |
 
-Этап 2: `Call(id,conversationId,initiatorUserId,acceptedByUserId?,kind,state,startedAt?,endedAt?,reason?)`.  
+Этап 2: реализованный `Call` использует `operatorUserId`, `endedReason`, выбранные семейства и revision; точная модель приведена в разделе B06 ниже.
 Этап 3: `BusinessInvitation`, `ConversationAssignment`, aggregate analytics.
 
 ## Важные database invariants
@@ -66,3 +66,12 @@ DB retention worker запускается каждые `Retention__SweepInterva
 `ObjectsDeletedAt IS NULL` и отдельно сверяйте prefix inventory с метаданными без автоматического
 удаления несовпадений. Перед restore остановите воркеры и проверьте согласованность версий БД,
 объектов и ключей. Hold вступает в силу для следующих партий. Для срочного hold остановите cleanup.
+
+
+## B06. Calls и metadata вложений
+
+Миграция CallsAndTimedMedia добавляет Calls с FK (ConversationId,ClientUserId,BusinessId) на соответствующий B2C-диалог, инициатора, исходные семейства, выбранного оператора, kind, state, timestamps, ExpiresAt, EndedReason, Revision и признак ожидания answer. Семейства хранятся как UUID, без FK на отдельную ротацию refresh. Один live Call на conversation и уникальный (InitiatorUserId,ClientCallId) защищены индексами. CHECK ограничивает kind, состояния, терминальные timestamps и наличие выбранных сторон в CONNECTING/ACTIVE.
+
+Attachments расширяется nullable полями DurationMilliseconds, Width, Height, AudioCodec и VideoCodec. Строки B05 сохраняются без подстановки metadata. Старый CHECK/ключи B2C и привязки attachments/read receipts сохраняются.
+
+История Call сохраняется без SDP, ICE candidates, TURN credentials и записи звонка. Автоматическое удаление call history не включено. Срок хранения согласуется вместе с канонической историей и legal hold. Отмена миграции удаляет историю Calls и новые metadata, поэтому требует резервной копии и остановки B06 traffic.

@@ -7,11 +7,13 @@ using chat.Domain.Businesses;
 using chat.Domain.Identity;
 using chat.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace chat.Api.Businesses;
 
-internal sealed class BusinessService(ChatDbContext db, BusinessDrafts drafts, AccountCredentials credentials, TimeProvider clock)
+internal sealed class BusinessService(ChatDbContext db, BusinessDrafts drafts, AccountCredentials credentials, TimeProvider clock,
+    IOptions<IdentityOptions> identity)
 {
     public async Task<BusinessApplicationReceipt> SubmitAsync(SubmitBusinessRequest request, CancellationToken ct)
     {
@@ -36,7 +38,7 @@ internal sealed class BusinessService(ChatDbContext db, BusinessDrafts drafts, A
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var draft = await drafts.LockDraftAsync(AccountCredentials.TokenHash(request.ApplicationDraftToken), ct);
         var ownedIds = await OwnedDocumentsAsync(draft.Id, request.VerificationDocumentIds, ct);
-        await credentials.CheckMailCapacityAsync(ct);
+        if (verificationToken is not null) await credentials.CheckMailCapacityAsync(ct);
         await transaction.CreateSavepointAsync("submit_application", ct);
 
         db.AddRange(owner, business, application, new BusinessMembership
@@ -230,7 +232,7 @@ internal sealed class BusinessService(ChatDbContext db, BusinessDrafts drafts, A
         if (approved)
         {
             if (!await db.Users.AnyAsync(user => user.Id == application.OwnerUserId && user.IsActive
-                    && user.EmailVerifiedAt != null, ct))
+                    && (!identity.Value.RequireConfirmedEmail || user.EmailVerifiedAt != null), ct))
             {
                 throw new ApiFailure(StatusCodes.Status409Conflict);
             }

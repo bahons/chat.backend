@@ -41,8 +41,9 @@ internal sealed class AccountCredentials(IPasswordHasher<User> passwords, IOptio
         }
     }
 
-    public string PrepareVerification(User user)
+    public string? PrepareVerification(User user)
     {
+        if (!options.Value.RequireConfirmedEmail) return null;
         var token = NewToken();
         user.VerificationHash = TokenHash(token);
         user.VerificationExpiresAt = clock.GetUtcNow().AddHours(24);
@@ -51,8 +52,10 @@ internal sealed class AccountCredentials(IPasswordHasher<User> passwords, IOptio
 
     public Task CheckMailCapacityAsync(CancellationToken ct) => email.CheckCapacityAsync(ct);
 
-    public void QueueVerification(User user, string token) =>
-        email.Enqueue(user.Id, false, token, user.VerificationExpiresAt!.Value);
+    public void QueueVerification(User user, string? token)
+    {
+        if (token is not null) email.Enqueue(user.Id, false, token, user.VerificationExpiresAt!.Value);
+    }
 
     public void QueuePasswordReset(Guid userId, string token, DateTimeOffset expiresAt) =>
         email.Enqueue(userId, true, token, expiresAt);

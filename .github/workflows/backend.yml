@@ -27,9 +27,15 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix tools/consumer-smoke --ignore-scripts
       - name: Restore and audit transitive packages
         run: dotnet restore chat.sln -p:NuGetAuditMode=all -warnaserror:NU1900,NU1903,NU1904,NU1905
       - run: dotnet build chat.sln --no-restore -warnaserror
+      - name: Install the media metadata inspector
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: dotnet test chat.sln --no-build
       - run: dotnet format chat.sln --no-restore --verify-no-changes
       - name: Check EF migrations and generate upgrade SQL
@@ -39,15 +45,12 @@ jobs:
           dotnet ef migrations has-pending-model-changes --project src/chat.Infrastructure --startup-project src/chat.Api --no-build
           dotnet ef migrations script --idempotent --project src/chat.Infrastructure --startup-project src/chat.Api --no-build \
             --output "$RUNNER_TEMP/chat-migrations.sql"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
       - name: Validate schema and consumer harness
         run: |
           npx --yes @redocly/cli@2.76.0 lint --extends spec artifacts/openapi.json
-          npm ci --prefix tools/consumer-smoke --ignore-scripts
           npm audit --prefix tools/consumer-smoke --audit-level=high
           node --check tools/consumer-smoke/signalr-smoke.mjs
+          node --check tools/consumer-smoke/b06-smoke.mjs
       - name: Reject breaking changes from the published contract
         shell: bash
         env:
@@ -55,12 +58,14 @@ jobs:
         run: |
           set -euo pipefail
           image=tufin/oasdiff:v1.34.1
-          docker run --rm --network none -v "$PWD:/spec:ro" -w /spec "$image" breaking --fail-on ERR \
-            artifacts/baselines/openapi-0.4.0.json artifacts/openapi.json
+          docker run --rm --network none -v "$PWD:/spec:ro" -w /spec "$image" breaking --format json \
+            artifacts/baselines/openapi-0.4.0.json artifacts/openapi.json > "$RUNNER_TEMP/baseline-breaking.json"
+          node tools/contracts/verify-breaking.mjs "$RUNNER_TEMP/baseline-breaking.json"
           if [[ -n "$PR_BASE" ]]; then
             git show "$PR_BASE:artifacts/openapi.json" > "$RUNNER_TEMP/base-openapi.json"
             docker run --rm --network none -v "$PWD:/spec:ro" -v "$RUNNER_TEMP/base-openapi.json:/baseline.json:ro" \
-              "$image" breaking --fail-on ERR /baseline.json /spec/artifacts/openapi.json
+              "$image" breaking --format json /baseline.json /spec/artifacts/openapi.json > "$RUNNER_TEMP/pr-breaking.json"
+            node tools/contracts/verify-breaking.mjs "$RUNNER_TEMP/pr-breaking.json"
           fi
       - name: Static analysis (C#)
         shell: bash

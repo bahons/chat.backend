@@ -131,7 +131,11 @@ internal sealed class ConversationService(ChatDbContext db, ConversationAccess a
                 && row.ConversationId == id && row.UploaderUserId == actor && row.MessageId == null
                 && row.Status == AttachmentStatus.READY && row.RetiredAt == null)
             .OrderBy(row => row.Id).ToListAsync(ct);
-        if (uploads.Count != attachmentIds.Length || (type == MessageType.IMAGE
+        if (uploads.Count != attachmentIds.Length
+            || (type is MessageType.AUDIO or MessageType.VIDEO && (uploads.Count != 1
+                || uploads.Any(row => row.DurationMilliseconds is null || !row.ContentType.StartsWith(
+                    type == MessageType.AUDIO ? "audio/" : "video/", StringComparison.Ordinal))))
+            || (type == MessageType.IMAGE
                 && uploads.Any(row => !row.ContentType.StartsWith("image/", StringComparison.Ordinal))))
         {
             throw new ApiFailure(StatusCodes.Status409Conflict, "MEDIA_NOT_READY", "An attachment is unavailable.");

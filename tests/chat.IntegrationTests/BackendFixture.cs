@@ -1,4 +1,6 @@
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using System.Net;
 using System.Threading.Channels;
 using chat.Api.Identity;
 using chat.Application.Identity;
@@ -18,6 +20,7 @@ namespace chat.IntegrationTests;
 
 public sealed class BackendFixture : IAsyncLifetime
 {
+    public X509Certificate2? NetworkCertificate { get; init; }
     private readonly PostgreSqlContainer postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
     private readonly TestEmailSender sender = new();
     private readonly string signingKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
@@ -42,9 +45,14 @@ public sealed class BackendFixture : IAsyncLifetime
             .UseSetting("Jwt:SigningKeyBase64", signingKey)
             .UseSetting("AccountEmail:QueueKeyBase64", mailKey)
             .UseSetting("Identity:AuthRequestsPerMinute", "120")
+            .UseSetting("Identity:LoginAttemptsPerAddress", "120")
             .UseSetting("AccountEmail:Port", Environment.GetEnvironmentVariable("CHAT_TEST_SMTP_PORT") ?? "1025")
             .UseSetting("RateLimiting:PermitLimit", "1200")
             .UseSetting("Push:Enabled", "true")
+            .UseSetting("Calls:Enabled", "true")
+            .UseSetting("Calls:TurnSecret", Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)))
+            .UseSetting("Calls:TurnUrls:0", "turn:turn.example.test:3478?transport=udp")
+            .UseSetting("Media:ProbePath", Environment.GetEnvironmentVariable("CHAT_TEST_FFPROBE") ?? "ffprobe")
             .UseSetting("ObjectStorage:ServiceUrl", Environment.GetEnvironmentVariable("CHAT_TEST_S3_URL") ?? "")
             .UseSetting("ObjectStorage:AccessKey", Environment.GetEnvironmentVariable("CHAT_TEST_S3_ACCESS_KEY") ?? "")
             .UseSetting("ObjectStorage:SecretKey", Environment.GetEnvironmentVariable("CHAT_TEST_S3_SECRET_KEY") ?? "")
@@ -67,6 +75,8 @@ public sealed class BackendFixture : IAsyncLifetime
                     services.Replace(ServiceDescriptor.Singleton<IPrivateObjectStorage>(Storage));
                 }
             }));
+        if (NetworkCertificate is { } certificate)
+            Host.UseKestrel(options => options.Listen(IPAddress.Loopback, 0, listen => listen.UseHttps(certificate)));
         await using var scope = Host.Services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<ChatDbContext>().Database.MigrateAsync(timeout.Token);
     }

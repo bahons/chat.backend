@@ -27,6 +27,8 @@ internal static class MediaServices
 {
     public static void AddConversationMedia(this IServiceCollection services, bool development)
     {
+        services.AddSingleton<IMediaProbe>(provider => new FfprobeMediaProbe(
+            provider.GetRequiredService<IConfiguration>()["Media:ProbePath"] ?? "ffprobe"));
         services.AddOptions<ObjectStorageOptions>().BindConfiguration("ObjectStorage")
             .Validate(options => string.IsNullOrEmpty(options.ServiceUrl)
                 || (Uri.TryCreate(options.ServiceUrl, UriKind.Absolute, out var uri)

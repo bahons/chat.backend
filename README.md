@@ -172,7 +172,13 @@ dotnet test chat.sln --no-build
 Полный прогон использует Docker для временного PostgreSQL. Для прогона без Docker
 используйте `dotnet test chat.sln --no-build --filter 'Dependency!=Docker'`.
 
-В Development схема доступна по `/openapi/v1.json`. Contract test сравнивает её с
+Swagger UI доступен по `/swagger` в Development. Для публикации Swagger в другой среде
+задайте `Swagger__Enabled=true`, а в production Compose — `SWAGGER_ENABLED=true`.
+Публикуются интерфейс и схема `/openapi/v1.json`. В Swagger нажмите Authorize и вставьте
+JWT access token для запросов к защищённым маршрутам. Токен не сохраняется между
+перезагрузками страницы. Внешний валидатор схемы отключён.
+
+Contract test сравнивает схему с
 `artifacts/openapi.json`. После согласованного изменения контракта обновите версию.
 Для воспроизводимого экспорта из корня репозитория используйте SDK из `global.json`
 и версии зависимостей из репозитория.
@@ -247,3 +253,12 @@ Redocly проверяет структуру документа и ссылки
 
 Пороги алертов, диагностика очередей и действия при отказах описаны в
 [эксплуатационном отчёте B05.3](docs/hardening/B05.3-results.md).
+
+## B06 — AUDIO/VIDEO и WebRTC
+
+Backend реализует phase-2 REST и signaling через существующий SignalR Hub.
+Перед включением нужны отдельный TURN с REST authentication и ffprobe для metadata
+загружаемых AUDIO/VIDEO. Настройки, сеть и обязательная проверка физических устройств:
+[эксплуатация WebRTC](docs/webrtc-operations.md). Контракты обновлены до 0.6.0:
+[REST](docs/contracts/api-v1.md), [события](docs/contracts/events-v1.md).
+Результаты фактически выполненных проверок и блокеры: [B06-REPORT.md](B06-REPORT.md).

@@ -4,6 +4,7 @@ using chat.Contracts;
 using chat.Domain.Businesses;
 using chat.Domain.Identity;
 using chat.Domain.Messaging;
+using chat.Domain.Calls;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.RateLimiting;
@@ -13,7 +14,7 @@ namespace chat.Api.Endpoints;
 
 internal static class ApiDocumentation
 {
-    public const string Version = "0.5.0";
+    public const string Version = "0.6.0";
     private const string Bearer = "Bearer";
     private static readonly string[] ContentTypes = ["application/pdf", "image/jpeg", "image/png"];
 
@@ -182,7 +183,7 @@ internal static class ApiDocumentation
             serviceUnavailable.Description = operation.OperationId switch
             {
                 "RegisterClient" or "ForgotPassword" or "SubmitBusinessApplication" => "Account request could not be queued. Retry later.",
-                "CompleteUpload" => "Scanner or storage is unavailable. Retry before the completion deadline.",
+                "CompleteUpload" => "Scanner, media inspector or storage is unavailable. Retry before the completion deadline.",
                 "SendMessage" or "MarkConversationRead" => "Delivery queue is overloaded. Retry later with the same request.",
                 _ => serviceUnavailable.Description
             };
@@ -211,10 +212,14 @@ internal static class ApiDocumentation
         Add("ReadReceiptView", "readerSide", Enum.GetNames<ParticipantSide>());
         Add("SendMessageRequest", "type", Enum.GetNames<MessageType>());
         Add("MessageView", "type", Enum.GetNames<MessageType>());
-        foreach (var name in new[] { "MessageAttachmentView", "PresignUploadRequest", "VerificationDocumentInfo" })
+        foreach (var name in new[] { "MessageAttachmentView", "PresignUploadRequest" })
         {
-            Add(name, "contentType", ContentTypes);
+            Add(name, "contentType", [.. ContentTypes, "audio/mp4", "audio/webm", "audio/ogg", "audio/mpeg", "video/mp4", "video/webm"]);
         }
+        Add("VerificationDocumentInfo", "contentType", ContentTypes);
+        Add("CreateCallRequest", "kind", Enum.GetNames<CallKind>());
+        Add("CallView", "kind", Enum.GetNames<CallKind>());
+        Add("CallView", "state", Enum.GetNames<CallState>());
 
         Add("DecisionRequest", "decision", ["APPROVE", "REJECT"]);
         Add("HealthResponse", "status", ["healthy"]);

@@ -51,3 +51,5 @@
 - E2EE **не утверждено**. На старте TLS + encryption at rest + server-side ACL; нельзя рекламировать E2EE до внедрения.
 - Доменная юрисдикция и требования к персональным данным до production.
 - .NET LTS зафиксировать в `global.json`. Начальное web UI — ASP.NET Core Blazor Web App, но frontend repo независим.
+
+B06 добавляет Calls в тот же монолит: EF Core state machine, scoped CallService и CallDelivery, TTL/ACL BackgroundService. Приглашения и состояния используют существующий PostgreSQL Outbox. SDP/ICE эфемерны и доставляются через тот же MessagingHub только выбранным сторонам. TURN работает отдельной инфраструктурой. ffprobe инспектирует AUDIO/VIDEO перед ClamAV и READY. Горизонтальный запуск сохраняет прежний открытый блокер B05.

@@ -1,4 +1,5 @@
 using chat.Domain.Businesses;
+using chat.Domain.Calls;
 using chat.Domain.Identity;
 using chat.Domain.Messaging;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +8,7 @@ namespace chat.Infrastructure.Persistence;
 
 public sealed class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContext(options)
 {
+    public DbSet<Call> Calls => Set<Call>();
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();
     public DbSet<AccountMail> AccountMails => Set<AccountMail>();

@@ -4,12 +4,16 @@ using chat.Domain.Businesses;
 using chat.Domain.Identity;
 using chat.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace chat.Api.Messaging;
 
 internal sealed class LiveConnection(string id, Guid userId, Guid familyId, UserKind kind, Action abort)
 {
     private long lastTyping;
+    private readonly object callGate = new();
+    private DateTimeOffset callWindow;
+    private int callRequests;
     public string Id { get; } = id;
     public Guid UserId { get; } = userId;
     public Guid FamilyId { get; } = familyId;
@@ -23,6 +27,15 @@ internal sealed class LiveConnection(string id, Guid userId, Guid familyId, User
         var previous = Interlocked.Read(ref lastTyping);
         return now.UtcTicks - previous >= TimeSpan.TicksPerSecond
             && Interlocked.CompareExchange(ref lastTyping, now.UtcTicks, previous) == previous;
+    }
+
+    public bool AllowCall(DateTimeOffset now)
+    {
+        lock (callGate)
+        {
+            if (now >= callWindow.AddSeconds(10)) { callWindow = now; callRequests = 0; }
+            return ++callRequests <= 60;
+        }
     }
 }
 
@@ -47,7 +60,7 @@ internal sealed class RealtimeConnections
     public void Remove(string id) => connections.TryRemove(id, out _);
 }
 
-internal sealed class RealtimeAccess(ChatDbContext db, ConversationAccess access, TimeProvider clock)
+internal sealed class RealtimeAccess(ChatDbContext db, ConversationAccess access, TimeProvider clock, IOptions<IdentityOptions> identity)
 {
     private const int BusinessLimit = 32;
 
@@ -131,7 +144,7 @@ internal sealed class RealtimeAccess(ChatDbContext db, ConversationAccess access
         var sessions = await (from session in AuthPrincipal.ActiveSessions(db, clock.GetUtcNow())
                               join user in db.Users on session.UserId equals user.Id
                               where users.Contains(user.Id) && families.Contains(session.FamilyId)
-                                  && user.IsActive && user.EmailVerifiedAt != null
+                                  && user.IsActive && (!identity.Value.RequireConfirmedEmail || user.EmailVerifiedAt != null)
                               select new Session(user.Id, session.FamilyId, user.Kind)).Distinct().ToListAsync(ct);
         var eligible = ConversationAccess.EligibleMemberships(db).Where(membership => db.Businesses.Any(business =>
             business.Id == membership.BusinessId && business.IsActive && business.Status == BusinessStatus.VERIFIED));

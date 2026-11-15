@@ -9,7 +9,7 @@ x-api: &api
   security_opt: ["no-new-privileges:true"]
   cap_drop: [ALL]
   read_only: true
-  tmpfs: ["/tmp:rw,noexec,nosuid,size=64m"]
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=192m"]
   logging:
     driver: json-file
     options: {max-size: "10m", max-file: "5"}
@@ -17,6 +17,8 @@ x-api: &api
     ASPNETCORE_ENVIRONMENT: Production
     ASPNETCORE_URLS: https://+:8443
     ASPNETCORE_FORWARDEDHEADERS_ENABLED: "false"
+    Swagger__Enabled: ${SWAGGER_ENABLED:-false}
+    Identity__RequireConfirmedEmail: ${REQUIRE_CONFIRMED_EMAIL:-true}
     ConnectionStrings__Postgres: "Host=postgres;Database=chat;Username=chat;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD};GSS Encryption Mode=Disable;Timeout=5;Command Timeout=30;Maximum Pool Size=50"
     AllowedHosts: "${API_DOMAIN:?Set API_DOMAIN};chat-backend.internal"
     ReverseProxy__KnownProxies__0: ${DOCKER_GATEWAY:-10.253.84.1}
@@ -46,6 +48,11 @@ x-api: &api
     Retention__LegalHold: ${RETENTION_LEGAL_HOLD:-false}
     Push__Enabled: ${PUSH_ENABLED:-false}
     Push__AccessToken: ${EXPO_ACCESS_TOKEN:-}
+    Calls__Enabled: ${CALLS_ENABLED:-false}
+    Calls__TurnSecret: ${TURN_SHARED_SECRET:-}
+    Calls__TurnUrls__0: ${TURN_URL:-}
+    Calls__CredentialSeconds: ${TURN_CREDENTIAL_SECONDS:-300}
+    Media__ProbePath: /usr/bin/ffprobe
   networks: [edge, database]
 
 services:

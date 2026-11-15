@@ -1,4 +1,5 @@
 using chat.Api.DependencyInjection;
+using chat.Api.Calls;
 using chat.Api.Identity;
 using chat.Api.Messaging;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -7,7 +8,8 @@ using Microsoft.Extensions.Options;
 namespace chat.Api.Endpoints;
 
 internal sealed class ReadinessConfigurationCheck(IOptions<JwtSettings> jwt, IOptions<ObjectStorageOptions> storage,
-    IOptions<FileScanOptions> scanner, AccountMailCipher mail, IConfiguration configuration, IHostEnvironment environment) : IHealthCheck
+    IOptions<FileScanOptions> scanner, AccountMailCipher mail, IConfiguration configuration, IHostEnvironment environment,
+    IOptions<CallOptions> calls) : IHealthCheck
 {
     public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
@@ -17,7 +19,7 @@ internal sealed class ReadinessConfigurationCheck(IOptions<JwtSettings> jwt, IOp
              && !string.IsNullOrWhiteSpace(scanner.Value.Host)
              && !string.IsNullOrWhiteSpace(configuration["AccountEmail:Host"]) && mail.IsConfigured);
 
-        return Task.FromResult(identityReady && productionReady
+        return Task.FromResult(identityReady && productionReady && (!calls.Value.Enabled || calls.Value.IsConfigured)
             ? HealthCheckResult.Healthy()
             : HealthCheckResult.Unhealthy());
     }

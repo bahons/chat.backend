@@ -16,6 +16,10 @@ internal sealed class AttachmentConfiguration : IEntityTypeConfiguration<Attachm
         entity.Property(row => row.Status).HasConversion<string>().HasMaxLength(16);
         entity.Property(row => row.ContentType).HasMaxLength(32);
         entity.Property(row => row.Checksum).HasMaxLength(64);
+        entity.Property(row => row.AudioCodec).HasMaxLength(16);
+        entity.Property(row => row.VideoCodec).HasMaxLength(16);
+        entity.ToTable("Attachments", table => table.HasCheckConstraint("CK_Attachments_MediaDuration",
+            "\"DurationMilliseconds\" IS NULL OR (\"DurationMilliseconds\" > 0 AND \"DurationMilliseconds\" <= 300000)"));
         entity.HasIndex(row => new { row.UploadExpiresAt, row.Id }).HasFilter("\"ObjectsDeletedAt\" IS NULL");
     }
 }

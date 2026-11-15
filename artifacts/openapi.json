@@ -2,7 +2,7 @@
   "openapi": "3.1.1",
   "info": {
     "title": "chat API",
-    "version": "0.5.0"
+    "version": "0.6.0"
   },
   "paths": {
     "/v1/me": {
@@ -7215,7 +7215,7 @@
             }
           },
           "503": {
-            "description": "Scanner or storage is unavailable. Retry before the completion deadline.",
+            "description": "Scanner, media inspector or storage is unavailable. Retry before the completion deadline.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8178,6 +8178,1055 @@
           }
         ]
       }
+    },
+    "/v1/calls": {
+      "post": {
+        "tags": [
+          "Calls"
+        ],
+        "operationId": "CreateCall",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (RATE_LIMITED)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the applicable rate limit can admit another request.",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied by transport policy or resource authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/v1/calls/{id}": {
+      "get": {
+        "tags": [
+          "Calls"
+        ],
+        "operationId": "GetCall",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (RATE_LIMITED)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the applicable rate limit can admit another request.",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied by transport policy or resource authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/v1/calls/{id}/end": {
+      "post": {
+        "tags": [
+          "Calls"
+        ],
+        "operationId": "EndCall",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (RATE_LIMITED)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the applicable rate limit can admit another request.",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied by transport policy or resource authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/v1/calls/{id}/ice-config": {
+      "post": {
+        "tags": [
+          "Calls"
+        ],
+        "operationId": "GetCallIceConfig",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IceConfiguration"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (RATE_LIMITED)",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the applicable rate limit can admit another request.",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied by transport policy or resource authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": { }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -8530,6 +9579,97 @@
           }
         }
       },
+      "CallView": {
+        "required": [
+          "id",
+          "conversationId",
+          "kind",
+          "state",
+          "initiatorIsClient",
+          "canAccept",
+          "canSignal",
+          "createdAt",
+          "expiresAt",
+          "startedAt",
+          "endedAt",
+          "endedReason",
+          "revision"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "conversationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "enum": [
+              "AUDIO",
+              "VIDEO"
+            ],
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "RINGING",
+              "CONNECTING",
+              "ACTIVE",
+              "ENDED",
+              "MISSED",
+              "REJECTED"
+            ],
+            "type": "string"
+          },
+          "initiatorIsClient": {
+            "type": "boolean"
+          },
+          "canAccept": {
+            "type": "boolean"
+          },
+          "canSignal": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "endedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "endedReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "revision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "CompletedUpload": {
         "required": [
           "uploadId",
@@ -8637,6 +9777,34 @@
           }
         }
       },
+      "CreateCallRequest": {
+        "required": [
+          "conversationId",
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "pattern": "^(AUDIO|VIDEO)$",
+            "enum": [
+              "AUDIO",
+              "VIDEO"
+            ],
+            "type": "string"
+          },
+          "clientCallId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
       "CreateConversationRequest": {
         "required": [
           "businessId"
@@ -8709,6 +9877,53 @@
               "healthy"
             ],
             "type": "string"
+          }
+        }
+      },
+      "IceConfiguration": {
+        "required": [
+          "iceServers",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "iceServers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IceServer"
+            }
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "IceServer": {
+        "required": [
+          "urls",
+          "username",
+          "credential"
+        ],
+        "type": "object",
+        "properties": {
+          "urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "username": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "credential": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -8808,7 +10023,13 @@
             "enum": [
               "application/pdf",
               "image/jpeg",
-              "image/png"
+              "image/png",
+              "audio/mp4",
+              "audio/webm",
+              "audio/ogg",
+              "audio/mpeg",
+              "video/mp4",
+              "video/webm"
             ],
             "type": "string"
           },
@@ -8819,6 +10040,45 @@
               "string"
             ],
             "format": "int64"
+          },
+          "durationMilliseconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "width": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "height": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "audioCodec": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "videoCodec": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -8858,7 +10118,9 @@
             "enum": [
               "TEXT",
               "IMAGE",
-              "FILE"
+              "FILE",
+              "AUDIO",
+              "VIDEO"
             ],
             "type": "string"
           },
@@ -9012,16 +10274,22 @@
             "format": "uuid"
           },
           "contentType": {
-            "pattern": "^(image/jpeg|image/png|application/pdf)$",
+            "pattern": "^(image/jpeg|image/png|application/pdf|audio/mp4|audio/webm|audio/ogg|audio/mpeg|video/mp4|video/webm)$",
             "enum": [
               "application/pdf",
               "image/jpeg",
-              "image/png"
+              "image/png",
+              "audio/mp4",
+              "audio/webm",
+              "audio/ogg",
+              "audio/mpeg",
+              "video/mp4",
+              "video/webm"
             ],
             "type": "string"
           },
           "size": {
-            "maximum": 10485760,
+            "maximum": 52428800,
             "minimum": 1,
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -9212,11 +10480,13 @@
             "format": "uuid"
           },
           "type": {
-            "pattern": "^(TEXT|IMAGE|FILE)$",
+            "pattern": "^(TEXT|IMAGE|FILE|AUDIO|VIDEO)$",
             "enum": [
               "TEXT",
               "IMAGE",
-              "FILE"
+              "FILE",
+              "AUDIO",
+              "VIDEO"
             ],
             "type": "string"
           },
@@ -9404,6 +10674,9 @@
     },
     {
       "name": "Devices"
+    },
+    {
+      "name": "Calls"
     }
   ]
 }

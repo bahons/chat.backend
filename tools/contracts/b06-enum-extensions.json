@@ -1,0 +1,114 @@
+[
+  {
+    "id": "response-property-enum-value-added",
+    "text": "added the new `AUDIO` enum value to the `items/items/type` response property for the response status `200`",
+    "operation": "GET",
+    "path": "/v1/conversations/{id}/messages",
+    "fingerprint": "b4b8db3baf99"
+  },
+  {
+    "id": "response-property-enum-value-added",
+    "text": "added the new `VIDEO` enum value to the `items/items/type` response property for the response status `200`",
+    "operation": "GET",
+    "path": "/v1/conversations/{id}/messages",
+    "fingerprint": "f395f77b733f"
+  },
+  {
+    "id": "response-property-enum-value-added",
+    "text": "added the new `audio/mp4` enum value to the `items/items/attachments/items/contentType` response property for the response status `200`",
+    "operation": "GET",
+    "path": "/v1/conversations/{id}/messages",
+    "fingerprint": "40a6ef03a3a3"
+  },
+  {
+    "id": "response-property-enum-value-added",
+    "text": "added the new `audio/mpeg` enum value to the `items/items/attachments/items/contentType` response property for the response status `200`",
+    "operation": "GET",
+    "path": "/v1/conversations/{id}/messages",
+    "fingerprint": "deb2d9c195fa"
+  },
+  {
+    "id": "response-property-enum-value-added",
+    "text": "added the new `audio/ogg` enum value to the `items/items/attachments/items/contentType` response property for the response status `200`",
+    "operation": "GET",
+    "path": "/v1/conversations/{id}/messages",
+    "fingerprint": "58a28cd80274"
+  },
+  {
+    "id": "response-property-enum-value-added",
+    "text": "added the new `audio/webm` enum value to the `items/items/attachments/items/contentType` response property for the response status `200`",
+    "operation": "GET",
+    "path": "/v1/conversations/{id}/messages",
+    "fingerprint": "d84aba13ac41"
+  },
+  {
+    "id": "response-property-enum-value-added",
+    "text": "added the new `video/mp4` enum value to the `items/items/attachments/items/contentType` response property for the response status `200`",
+    "operation": "GET",
+    "path": "/v1/conversations/{id}/messages",
+    "fingerprint": "92a4fdeffa49"
+  },
+  {
+    "id": "response-property-enum-value-added",
+    "text": "added the new `video/webm` enum value to the `items/items/attachments/items/contentType` response property for the response status `200`",
+    "operation": "GET",
+    "path": "/v1/conversations/{id}/messages",
+    "fingerprint": "7c834db32194"
+  },
+  {
+    "id": "response-property-enum-value-added",
+    "text": "added the new `AUDIO` enum value to the `type` response property for the response status `200`",
+    "operation": "POST",
+    "path": "/v1/conversations/{id}/messages",
+    "fingerprint": "f24c25f4a615"
+  },
+  {
+    "id": "response-property-enum-value-added",
+    "text": "added the new `VIDEO` enum value to the `type` response property for the response status `200`",
+    "operation": "POST",
+    "path": "/v1/conversations/{id}/messages",
+    "fingerprint": "fb064b60cd39"
+  },
+  {
+    "id": "response-property-enum-value-added",
+    "text": "added the new `audio/mp4` enum value to the `attachments/items/contentType` response property for the response status `200`",
+    "operation": "POST",
+    "path": "/v1/conversations/{id}/messages",
+    "fingerprint": "fae9bbed8207"
+  },
+  {
+    "id": "response-property-enum-value-added",
+    "text": "added the new `audio/mpeg` enum value to the `attachments/items/contentType` response property for the response status `200`",
+    "operation": "POST",
+    "path": "/v1/conversations/{id}/messages",
+    "fingerprint": "465d1c112d50"
+  },
+  {
+    "id": "response-property-enum-value-added",
+    "text": "added the new `audio/ogg` enum value to the `attachments/items/contentType` response property for the response status `200`",
+    "operation": "POST",
+    "path": "/v1/conversations/{id}/messages",
+    "fingerprint": "772d6fdb4db6"
+  },
+  {
+    "id": "response-property-enum-value-added",
+    "text": "added the new `audio/webm` enum value to the `attachments/items/contentType` response property for the response status `200`",
+    "operation": "POST",
+    "path": "/v1/conversations/{id}/messages",
+    "fingerprint": "b4a8125c14d5"
+  },
+  {
+    "id": "response-property-enum-value-added",
+    "text": "added the new `video/mp4` enum value to the `attachments/items/contentType` response property for the response status `200`",
+    "operation": "POST",
+    "path": "/v1/conversations/{id}/messages",
+    "fingerprint": "7a82a708a34e"
+  },
+  {
+    "id": "response-property-enum-value-added",
+    "text": "added the new `video/webm` enum value to the `attachments/items/contentType` response property for the response status `200`",
+    "operation": "POST",
+    "path": "/v1/conversations/{id}/messages",
+    "fingerprint": "a5ab37994e93"
+  }
+]

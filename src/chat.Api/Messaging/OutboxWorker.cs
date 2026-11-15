@@ -60,7 +60,8 @@ internal sealed partial class OutboxWorker(IServiceScopeFactory scopes, Realtime
             timeout.CancelAfter(TimeSpan.FromSeconds(5));
             try
             {
-                var outcome = await DispatchAsync(db, scope.ServiceProvider.GetRequiredService<RealtimeAccess>(), row, timeout.Token);
+                var outcome = await DispatchAsync(db, scope.ServiceProvider.GetRequiredService<RealtimeAccess>(),
+                    scope.ServiceProvider.GetRequiredService<chat.Api.Calls.CallDelivery>(), row, timeout.Token);
                 WorkerLease.Finish(row, clock.GetUtcNow(), outcome);
             }
             catch (Exception) when (!ct.IsCancellationRequested)
@@ -79,7 +80,8 @@ internal sealed partial class OutboxWorker(IServiceScopeFactory scopes, Realtime
         return true;
     }
 
-    private async Task<string> DispatchAsync(ChatDbContext db, RealtimeAccess access, OutboxMessage row, CancellationToken ct)
+    private async Task<string> DispatchAsync(ChatDbContext db, RealtimeAccess access, chat.Api.Calls.CallDelivery calls,
+        OutboxMessage row, CancellationToken ct)
     {
         // Revocation is enforced by the independent ACL sweep. No suspension payload goes to revoked peers.
         if (row.EventName == Outbox.BusinessAccessRevoked || row.ConversationId is not { } id)
@@ -88,6 +90,10 @@ internal sealed partial class OutboxWorker(IServiceScopeFactory scopes, Realtime
         }
 
         var payload = JsonSerializer.Deserialize<JsonElement>(row.Payload, Outbox.Json);
+        if (row.EventName is "CallIncoming" or "CallStateChanged")
+        {
+            return await calls.StateAsync(row.EventName, id, payload, row.Id, row.OccurredAt, ct);
+        }
         var message = payload.TryGetProperty("messageId", out var reference) && reference.ValueKind == JsonValueKind.String
             && reference.TryGetGuid(out var messageId)
             ? await db.Messages.AsNoTracking().SingleOrDefaultAsync(item => item.Id == messageId && item.ConversationId == id, ct)

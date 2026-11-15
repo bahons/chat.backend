@@ -13,6 +13,11 @@ public sealed class Attachment
     public AttachmentStatus Status { get; set; }
     public Guid? MessageId { get; set; }
     public string? Checksum { get; set; }
+    public int? DurationMilliseconds { get; set; }
+    public int? Width { get; set; }
+    public int? Height { get; set; }
+    public string? AudioCodec { get; set; }
+    public string? VideoCodec { get; set; }
     public Guid? UploadFamilyId { get; init; }
     public DateTimeOffset? RetiredAt { get; set; }
     public DateTimeOffset? CleanupAfter { get; set; }

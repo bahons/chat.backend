@@ -113,6 +113,10 @@ public sealed class PostgresTests
         using var ready = await client.GetAsync("/health/ready", timeout.Token);
         Assert.Equal(HttpStatusCode.OK, ready.StatusCode);
 
+        using var callsMissingTurn = configured.WithWebHostBuilder(builder => builder.UseSetting("Calls:Enabled", "true"));
+        using var callsClient = callsMissingTurn.CreateClient();
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, (await callsClient.GetAsync("/health/ready", timeout.Token)).StatusCode);
+
         using var production = configured.WithWebHostBuilder(builder => builder.UseEnvironment("Production"));
         using var productionClient = production.CreateClient(new WebApplicationFactoryClientOptions
         {

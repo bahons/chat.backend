@@ -1,4 +1,18 @@
-# Технический аудит B01–B05
+# Реализация B01–B06 и технический аудит
+
+## B06 — AUDIO/VIDEO и WebRTC signaling, 16 ноября 2026
+
+Выполнен исходный `prompts/06-webrtc.md` в существующем модульном монолите, без альтернативных CALL-этапов. Реализованы media metadata с реальным ffprobe и прежним READY/ClamAV gate, Call state machine, migration `20261115194749_CallsAndTimedMedia`, четыре REST endpoint, шесть исходных Hub methods и пять исходных events. ACL проверяет текущие B2C membership/session; принятие сериализовано и выбирает одного сотрудника. Сохраняются одно live Call на диалог, TTL, idempotency, payload/rate limits, short-lived coturn credentials и REST reconciliation после reconnect.
+
+Фактически прошли `dotnet restore`, `build --no-restore -warnaserror`, `test --no-build` (63 теста: 12 unit, 1 contract, 50 integration, без пропусков) и `format --verify-no-changes`. PostgreSQL настоящий; SignalR проверен клиентами .NET и JavaScript 10.0.11, JS использует настоящий локальный HTTPS/WSS. ffprobe 9.0.2 проверил созданные ffmpeg audio/video и отклонил избыточную длительность. S3 и scanner в этом прогоне заменены тестовыми адаптерами. Проверены EF snapshot, idempotent SQL, обновление/откат схемы, OpenAPI, локальная сборка runtime image с .NET 10.0.14/ffprobe 6.1.1.
+
+Контракт 0.6.0 сохраняет старые маршруты и типы, но AUDIO/VIDEO и новые MIME требуют обновления строгих consumer enum. Неизменённый baseline даёт 16 ожидаемых breaking findings; CI разрешает только их точные fingerprint+описание, все прочие ошибки отклоняет. Это обоснованное требованием B06 расширение, а не утверждение о готовности старых клиентов.
+
+**Открытые блокеры интеграции/релиза:** физические browser↔mobile звонки, реальная TURN allocation/relay fallback, инфраструктура и сертификаты целевого TURN, HTTPS/WSS через целевой reverse proxy, runtime/security patches целевого процесса, production-настройки лимитов ffprobe/ClamAV. ACTIVE подтверждает signaling state, не факт работающих медиа. Уже выданные TURN credentials и P2P нельзя немедленно отозвать через API. Горизонтальное масштабирование по-прежнему не включено.
+
+Полный состав изменений, команды и проверки F15/M09: [B06-REPORT.md](../B06-REPORT.md). Инфраструктура: [webrtc-operations.md](webrtc-operations.md). Frontend/mobile не изменялись, деплой не выполнялся, B07 не начат. Ниже сохранены результаты прежних этапов и исходного аудита.
+
+## Исходный аудит B01–B05
 
 Аудит выполнен 8 ноября 2026 года. Проверена рабочая копия `chat-backend` на базе `bea2bdc`. Изменения B01–B05 на момент проверки находятся в рабочей копии. Объём аудита включает `AGENTS.md`, все документы в `docs/`, реализацию, миграции, OpenAPI, тесты и локальную Git-историю. По результатам добавлен этот отчёт.
 

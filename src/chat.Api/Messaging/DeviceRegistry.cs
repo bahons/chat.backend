@@ -3,10 +3,11 @@ using chat.Api.Middleware;
 using chat.Contracts.Messaging;
 using chat.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace chat.Api.Messaging;
 
-internal sealed class DeviceRegistry(ChatDbContext db, TimeProvider clock)
+internal sealed class DeviceRegistry(ChatDbContext db, TimeProvider clock, IOptions<IdentityOptions> identity)
 {
     public static readonly TimeSpan InactivityLimit = TimeSpan.FromDays(90);
 
@@ -53,7 +54,8 @@ internal sealed class DeviceRegistry(ChatDbContext db, TimeProvider clock)
         var rows = await db.Users.FromSql($"SELECT * FROM \"Users\" WHERE \"Id\" = {userId} FOR SHARE")
             .AsNoTracking().ToListAsync(ct);
         var now = clock.GetUtcNow();
-        if (rows.SingleOrDefault() is not { IsActive: true, EmailVerifiedAt: not null }
+        if (rows.SingleOrDefault() is not { IsActive: true } user
+            || (identity.Value.RequireConfirmedEmail && user.EmailVerifiedAt is null)
             || !await AuthPrincipal.ActiveSessions(db, now).AnyAsync(session => session.UserId == userId
                 && session.FamilyId == familyId, ct))
         {

@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 namespace chat.Api.Messaging;
 
 internal sealed partial class PushWorker(IServiceScopeFactory scopes, IOptions<PushOptions> options, TimeProvider clock,
-    ILogger<PushWorker> logger) : BackgroundService
+    ILogger<PushWorker> logger, IOptions<IdentityOptions> identity) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -52,7 +52,7 @@ internal sealed partial class PushWorker(IServiceScopeFactory scopes, IOptions<P
             && row.UserId == delivery.UserId && row.FamilyId == delivery.FamilyId && row.RevokedAt == null
             && row.UpdatedAt > now - DeviceRegistry.InactivityLimit, ct);
         var user = await db.Users.AsNoTracking().SingleOrDefaultAsync(row => row.Id == delivery.UserId && row.IsActive
-            && row.EmailVerifiedAt != null && AuthPrincipal.ActiveSessions(db, now)
+            && (!identity.Value.RequireConfirmedEmail || row.EmailVerifiedAt != null) && AuthPrincipal.ActiveSessions(db, now)
                 .Any(session => session.UserId == row.Id && session.FamilyId == delivery.FamilyId), ct);
         var access = scope.ServiceProvider.GetRequiredService<ConversationAccess>();
         if (delivery.ExpiresAt <= now || delivery.Attempts > 16)

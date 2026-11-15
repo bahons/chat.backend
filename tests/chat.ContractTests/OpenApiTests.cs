@@ -15,7 +15,7 @@ public sealed class OpenApiTests
         var actual = JsonNode.Parse(document)!;
         var paths = actual["paths"]!;
 
-        Assert.Equal("0.5.0", (string?)actual["info"]?["version"]);
+        Assert.Equal("0.6.0", (string?)actual["info"]?["version"]);
         Assert.Null(paths["/health/live"]?["get"]?["responses"]?["429"]);
         Assert.Null(paths["/health/ready"]?["get"]?["responses"]?["429"]);
         Assert.NotNull(paths["/health/ready"]?["get"]?["responses"]?["503"]);
@@ -44,6 +44,11 @@ public sealed class OpenApiTests
                 .Select(value => (string?)value));
         Assert.Null(schemas["MessageView"]!["properties"]!["authorUserId"]);
         Assert.NotNull(schemas["ConversationView"]!["properties"]!["readState"]);
+        foreach (var method in new[] { "/v1/calls", "/v1/calls/{id}", "/v1/calls/{id}/end", "/v1/calls/{id}/ice-config" })
+            Assert.NotNull(paths[method]);
+        Assert.NotNull(schemas["MessageAttachmentView"]!["properties"]!["durationMilliseconds"]);
+        Assert.Contains("AUDIO", schemas["MessageView"]!["properties"]!["type"]!["enum"]!.AsArray().Select(value => (string?)value));
+        Assert.Null(schemas["CallView"]!["properties"]!["operatorUserId"]);
 
         var exportPath = Environment.GetEnvironmentVariable("CHAT_OPENAPI_EXPORT");
         if (!string.IsNullOrEmpty(exportPath))

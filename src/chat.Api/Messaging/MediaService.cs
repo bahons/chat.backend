@@ -10,15 +10,18 @@ using chat.Domain.Identity;
 using chat.Domain.Messaging;
 using chat.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace chat.Api.Messaging;
 
 internal sealed class MediaService(ChatDbContext db, ConversationAccess access, IPrivateObjectStorage storage,
-    IFileScanner scanner, TimeProvider clock)
+    IFileScanner scanner, TimeProvider clock, IOptions<IdentityOptions> identity, IMediaProbe probe)
 {
     public async Task<PresignedUpload> PresignAsync(Guid actor, Guid family, UserKind kind, PresignUploadRequest request, CancellationToken ct)
     {
         await access.RequireAsync(request.ConversationId, actor, kind, ct);
+        if (request.Size > (IsTimedMedia(request.ContentType) ? 50 : 10) * 1024 * 1024)
+            throw new ApiFailure(StatusCodes.Status400BadRequest);
         var upload = new Attachment
         {
             ConversationId = request.ConversationId,
@@ -60,15 +63,24 @@ internal sealed class MediaService(ChatDbContext db, ConversationAccess access, 
 
         var bytes = await StorageOperationAsync(token => storage.ReadUploadAsync(StagingKey(id), visible.ContentType, visible.Size, token), ct)
             ?? throw new ApiFailure(StatusCodes.Status409Conflict, "MEDIA_NOT_READY", "Upload is missing or has incorrect metadata.");
-        var clean = BusinessDrafts.DetectContentType(bytes) == visible.ContentType
-            && (visible.ContentType != "application/pdf" || VerificationDocumentScanner.HasPdfEnvelope(bytes))
-            && await ScanAsync(bytes, ct);
+        MediaMetadata? metadata = null;
+        bool valid;
+        if (IsTimedMedia(visible.ContentType))
+        {
+            try { metadata = await probe.InspectAsync(bytes, visible.ContentType, ct); }
+            catch (IOException) { throw new ApiFailure(StatusCodes.Status503ServiceUnavailable); }
+            valid = metadata is not null;
+        }
+        else valid = BusinessDrafts.DetectContentType(bytes) == visible.ContentType
+            && (visible.ContentType != "application/pdf" || VerificationDocumentScanner.HasPdfEnvelope(bytes));
+        var clean = valid && await ScanAsync(bytes, ct);
 
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await access.LockAsync(visible.ConversationId, actor, kind, ct);
         var upload = await db.Attachments.SingleAsync(row => row.Id == id, ct);
         var user = (await db.Users.FromSql($"SELECT * FROM \"Users\" WHERE \"Id\" = {actor} FOR SHARE").ToListAsync(ct)).SingleOrDefault();
-        if (upload.RetiredAt != null || user is not { IsActive: true, EmailVerifiedAt: not null } || user.Kind != kind
+        if (upload.RetiredAt != null || user is not { IsActive: true } || user.Kind != kind
+            || (identity.Value.RequireConfirmedEmail && user.EmailVerifiedAt is null)
             || !await AuthPrincipal.ActiveSessions(db, clock.GetUtcNow()).AnyAsync(
                 session => session.UserId == actor && session.FamilyId == family, ct))
         {
@@ -90,6 +102,11 @@ internal sealed class MediaService(ChatDbContext db, ConversationAccess access, 
                     return true;
                 }, ct);
                 upload.Checksum = Convert.ToHexString(SHA256.HashData(bytes));
+                upload.DurationMilliseconds = metadata?.DurationMilliseconds;
+                upload.Width = metadata?.Width;
+                upload.Height = metadata?.Height;
+                upload.AudioCodec = metadata?.AudioCodec;
+                upload.VideoCodec = metadata?.VideoCodec;
                 upload.Status = AttachmentStatus.READY;
             }
             else
@@ -147,6 +164,8 @@ internal sealed class MediaService(ChatDbContext db, ConversationAccess access, 
     }
 
     internal static string StagingKey(Guid id) => $"incoming/{id:N}";
+    private static bool IsTimedMedia(string type) => type.StartsWith("audio/", StringComparison.Ordinal)
+        || type.StartsWith("video/", StringComparison.Ordinal);
     internal static string VerifiedKey(Guid id) => $"media/{id:N}";
     private static ApiFailure NotFound() => new(StatusCodes.Status404NotFound);
 }

@@ -18,7 +18,7 @@ internal sealed class AccountService(ChatDbContext db, AccountCredentials creden
         var user = credentials.CreateUser(request.Email, request.Password, request.DisplayName, UserKind.CLIENT);
         var verificationToken = credentials.PrepareVerification(user);
         await using var transaction = await BeginIdentityTransactionAsync(cancellationToken);
-        await credentials.CheckMailCapacityAsync(cancellationToken);
+        if (verificationToken is not null) await credentials.CheckMailCapacityAsync(cancellationToken);
         db.Users.Add(user);
         credentials.QueueVerification(user, verificationToken);
         try
@@ -57,7 +57,7 @@ internal sealed class AccountService(ChatDbContext db, AccountCredentials creden
             throw Unauthorized();
         }
 
-        if (user.EmailVerifiedAt is null)
+        if (options.Value.RequireConfirmedEmail && user.EmailVerifiedAt is null)
         {
             if (user.VerificationExpiresAt is null || user.VerificationExpiresAt <= clock.GetUtcNow().AddHours(24).AddMinutes(-1))
             {
@@ -97,7 +97,7 @@ internal sealed class AccountService(ChatDbContext db, AccountCredentials creden
         var user = await LockUserAsync(userId.Value, cancellationToken);
         var previous = await db.RefreshSessions.SingleOrDefaultAsync(session => session.TokenHash == hash, cancellationToken);
         var now = clock.GetUtcNow();
-        if (user is not { IsActive: true, EmailVerifiedAt: not null } || previous is null
+        if (user is not { IsActive: true } || (options.Value.RequireConfirmedEmail && user.EmailVerifiedAt is null) || previous is null
             || previous.RevokedAt is not null || previous.ExpiresAt <= now)
         {
             throw Unauthorized();
