@@ -17,7 +17,8 @@ internal sealed class ReadinessConfigurationCheck(IOptions<JwtSettings> jwt, IOp
         var productionReady = !environment.IsProduction() ||
             (!string.IsNullOrWhiteSpace(storage.Value.ServiceUrl)
              && !string.IsNullOrWhiteSpace(scanner.Value.Host)
-             && !string.IsNullOrWhiteSpace(configuration["AccountEmail:Host"]) && mail.IsConfigured);
+             && (!configuration.GetValue("AccountEmail:Enabled", true)
+                 || (!string.IsNullOrWhiteSpace(configuration["AccountEmail:Host"]) && mail.IsConfigured)));
 
         return Task.FromResult(identityReady && productionReady && (!calls.Value.Enabled || calls.Value.IsConfigured)
             ? HealthCheckResult.Healthy()

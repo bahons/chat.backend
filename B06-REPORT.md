@@ -108,4 +108,12 @@ SDK 10.0.403, Windows runtime 10.0.14; реальный PostgreSQL 17 в Docker.
 - Проверить microphone/camera permissions, смену camera/audio route, background/foreground и сеть на настоящих устройствах.
 - Browser↔mobile AUDIO и VIDEO в обе стороны; принудительный relay-only и подтверждение selected relay candidate pair, UDP/TCP/TLS fallback, обновление credentials и NAT-сценарии.
 
-Изменения клиентов оформляются отдельно. Автоматический деплой на chat.dodapp.kz не выполнялся. B07 не начат.
+Изменения клиентов оформляются отдельно. На момент исходного отчёта деплой на chat.dodapp.kz не выполнялся. B07 не начат.
+
+## Дополнение: разрешённый production deploy 16–17 ноября 2026
+
+После отдельного разрешения владельца B06 установлен на целевом сервере. API 0.6.0, миграция, runtime 10.0.15, HTTPS/readiness, авторизованный WSS и реальные внешние TURN allocation/relay UDP/TCP/TLS подтверждены. Сохранены site-specific конфигурация и данные, backup проверен восстановлением и миграцией копии. Исходные пункты выше о непроверенной целевой инфраструктуре заменены этими фактическими результатами; физические audio/video звонки по-прежнему не имеют PASS.
+
+Изменения выпуска: `deploy/Dockerfile.production`, `deploy/docker-compose.webrtc.yml`, `deploy/production/{release.sh,renew-turn-tls.sh,turnserver.conf.template}`, `src/chat.Api/Identity/{IdentityOptions.cs,IdentityServices.cs,AccountMailQueue.cs}`, `src/chat.Api/Endpoints/ReadinessConfigurationCheck.cs`, `tests/chat.IntegrationTests/PostgresTests.cs` и эксплуатационная документация. Новых API и миграций сверх B06 не добавлено. Явный email opt-out сохраняет уже существовавшую конфигурацию сервера; test проверяет readiness и отказ постановки писем в отключённую очередь.
+
+Точные версии, инфраструктура, команды проверки, backup, release incident и оставшиеся ручные сценарии F15/M09: [docs/deployments/B06-2026-11-17.md](docs/deployments/B06-2026-11-17.md).

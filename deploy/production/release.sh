@@ -4,7 +4,13 @@ cd "$(dirname "$0")/../.."
 umask 077
 exec 9>.release.lock
 flock -n 9 || { echo 'Another release is running in this directory.' >&2; exit 1; }
-compose() { docker compose --env-file .env.production -f deploy/docker-compose.production.yml "$@"; }
+compose() {
+    if [ -f deploy/docker-compose.webrtc.yml ] && [ -f deploy/production/private/turn/turnserver.conf ]; then
+        docker compose --env-file .env.production -f deploy/docker-compose.production.yml -f deploy/docker-compose.webrtc.yml "$@"
+    else
+        docker compose --env-file .env.production -f deploy/docker-compose.production.yml "$@"
+    fi
+}
 compose config --quiet
 test -r deploy/production/tls/backend/backend.key
 test -r deploy/production/tls/backend/backend.crt
@@ -18,6 +24,6 @@ backup="backups/pre-release-$(date -u +%Y%m%dT%H%M%SZ).dump"
 compose exec -T postgres pg_dump -U chat -d chat -Fc > "$backup.partial"
 compose exec -T postgres pg_restore --list < "$backup.partial" > /dev/null
 mv "$backup.partial" "$backup"
-compose run --rm --no-deps migrate
+compose run --rm --no-deps -T migrate </dev/null
 compose up -d --wait --wait-timeout 180 api
 compose ps

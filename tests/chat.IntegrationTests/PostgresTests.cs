@@ -139,5 +139,27 @@ public sealed class PostgresTests
         });
         using var productionReady = await productionConfiguredClient.GetAsync("/health/ready", timeout.Token);
         Assert.Equal(HttpStatusCode.OK, productionReady.StatusCode);
+
+        // Preserve the already deployed opt-out for account email delivery during the B06 rollout.
+        await productionConfigured.DisposeAsync();
+        using var mailDisabled = configured.WithWebHostBuilder(builder => builder.UseEnvironment("Production")
+            .UseSetting("FileScan:Host", "localhost")
+            .UseSetting("ObjectStorage:ServiceUrl", "https://storage.example.test")
+            .UseSetting("ObjectStorage:AccessKey", "test-access")
+            .UseSetting("ObjectStorage:SecretKey", "test-secret")
+            .UseSetting("AccountEmail:Enabled", "false")
+            .UseSetting("AccountEmail:Host", "")
+            .UseSetting("AccountEmail:Port", "0")
+            .UseSetting("AccountEmail:From", ""));
+        using var mailDisabledClient = mailDisabled.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost")
+        });
+        Assert.Equal(HttpStatusCode.OK, (await mailDisabledClient.GetAsync("/health/ready", timeout.Token)).StatusCode);
+        await using var mailScope = mailDisabled.Services.CreateAsyncScope();
+        Assert.False(mailScope.ServiceProvider.GetRequiredService<chat.Api.Identity.AccountMailCipher>().IsConfigured);
+        var unavailable = await Assert.ThrowsAsync<chat.Api.Middleware.ApiFailure>(() => mailScope.ServiceProvider
+            .GetRequiredService<chat.Api.Identity.AccountMailQueue>().CheckCapacityAsync(timeout.Token));
+        Assert.Equal(503, unavailable.StatusCode);
     }
 }

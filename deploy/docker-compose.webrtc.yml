@@ -1,0 +1,43 @@
+# Optional B06 production overlay. Preserve the site's existing base Compose services/settings.
+services:
+  api:
+    tmpfs: !override ["/tmp:rw,noexec,nosuid,size=192m"]
+    mem_limit: 2g
+    pids_limit: 256
+    environment:
+      Calls__Enabled: ${CALLS_ENABLED:-false}
+      Calls__TurnSecret: ${TURN_SHARED_SECRET:?Provision TURN_SHARED_SECRET}
+      Calls__TurnUrls__0: "turn:${API_DOMAIN}:3478?transport=udp"
+      Calls__TurnUrls__1: "turn:${API_DOMAIN}:3478?transport=tcp"
+      Calls__TurnUrls__2: "turns:${API_DOMAIN}:5349?transport=tcp"
+      Calls__StunUrls__0: "stun:${API_DOMAIN}:3478"
+      Calls__CredentialSeconds: ${TURN_CREDENTIAL_SECONDS:-300}
+      Media__ProbePath: /usr/bin/ffprobe
+      AccountEmail__Enabled: ${SMTP_ENABLED:-true}
+
+  coturn:
+    image: coturn/coturn:4.19.0-r0@sha256:0a3c026baaab092c79c9005823a72747bd09bf211071d537bb0865d95eae4638
+    restart: unless-stopped
+    network_mode: host
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    # The pinned turnserver binary carries this file capability; it must be in the bounding set.
+    cap_add: [NET_BIND_SERVICE]
+    mem_limit: 512m
+    cpus: 1
+    pids_limit: 128
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=32m"]
+    command: ["-c", "/etc/coturn/turnserver.conf"]
+    volumes:
+      - ./production/private/turn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+      - ./production/tls/turn:/run/coturn-tls:ro
+    healthcheck:
+      test: ["CMD", "turnutils_stunclient", "-p", "3478", "127.0.0.1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "3"}

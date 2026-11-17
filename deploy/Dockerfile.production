@@ -1,5 +1,5 @@
-ARG DOTNET_SDK=10.0.403
-ARG ASPNET_RUNTIME=10.0.14
+ARG DOTNET_SDK=10.0.404
+ARG ASPNET_RUNTIME=10.0.15
 FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_SDK} AS build
 WORKDIR /source
 COPY global.json Directory.Build.props chat.sln ./

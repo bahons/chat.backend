@@ -229,3 +229,18 @@ Nginx. Прошёл 51 тест backend, включая OpenAPI и интегр�
 
 Схема запуска согласована с [Docker Compose startup order](https://docs.docker.com/compose/how-tos/startup-order/)
 и [официальным PostgreSQL image](https://hub.docker.com/_/postgres).
+
+## B06: состояние целевого сервера
+
+16 ноября 2026 после отдельного разрешения выполнен production deploy B06; 17 ноября повторно подтверждены readiness и healthy API/coturn. Полный состав backup, версий, проверок и оставшихся ручных сценариев — [deployment report](deployments/B06-2026-11-17.md). Это обновляет прежнюю запись выше о ещё не проверенном целевом сервере.
+
+Для provisioned B06 использовать оба файла, сохраняя существующий site-specific base:
+
+```sh
+docker compose --env-file .env.production \
+  -f deploy/docker-compose.production.yml -f deploy/docker-compose.webrtc.yml config --quiet
+docker compose --env-file .env.production \
+  -f deploy/docker-compose.production.yml -f deploy/docker-compose.webrtc.yml ps
+```
+
+Secret/cert provisioning, firewall и coturn описаны в [webrtc-operations.md](webrtc-operations.md). `release.sh` сам подключает provisioned overlay; backup/stop-first сохранены. Не выполнять автоматический Down либо downgrade старого consumer AUDIO/VIDEO после появления новых данных. Физические звонки и production media flow ещё требуют ручной проверки.

@@ -14,6 +14,11 @@ internal sealed class AccountMailQueue(ChatDbContext db, AccountMailCipher ciphe
 {
     public async Task CheckCapacityAsync(CancellationToken ct)
     {
+        if (!options.Value.Enabled)
+        {
+            throw new ApiFailure(StatusCodes.Status503ServiceUnavailable);
+        }
+
         if (db.Database.CurrentTransaction is null)
         {
             throw new InvalidOperationException("Mail admission requires an account transaction.");
@@ -38,8 +43,8 @@ internal sealed class AccountMailQueue(ChatDbContext db, AccountMailCipher ciphe
 
 internal sealed class AccountMailCipher(IOptions<AccountEmailOptions> options, IOptions<JwtSettings> jwt, IHostEnvironment environment)
 {
-    public bool IsConfigured => ParseKey(options.Value.QueueKeyBase64) is not null
-        || (options.Value.QueueKeyBase64 is null && !environment.IsProduction() && jwt.Value.GetSigningKey() is not null);
+    public bool IsConfigured => options.Value.Enabled && (ParseKey(options.Value.QueueKeyBase64) is not null
+        || (options.Value.QueueKeyBase64 is null && !environment.IsProduction() && jwt.Value.GetSigningKey() is not null));
 
     public static byte[]? ParseKey(string? value)
     {

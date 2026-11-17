@@ -8,9 +8,11 @@
 
 Контракт 0.6.0 сохраняет старые маршруты и типы, но AUDIO/VIDEO и новые MIME требуют обновления строгих consumer enum. Неизменённый baseline даёт 16 ожидаемых breaking findings; CI разрешает только их точные fingerprint+описание, все прочие ошибки отклоняет. Это обоснованное требованием B06 расширение, а не утверждение о готовности старых клиентов.
 
-**Открытые блокеры интеграции/релиза:** физические browser↔mobile звонки, реальная TURN allocation/relay fallback, инфраструктура и сертификаты целевого TURN, HTTPS/WSS через целевой reverse proxy, runtime/security patches целевого процесса, production-настройки лимитов ffprobe/ClamAV. ACTIVE подтверждает signaling state, не факт работающих медиа. Уже выданные TURN credentials и P2P нельзя немедленно отозвать через API. Горизонтальное масштабирование по-прежнему не включено.
+**Обновление 17 ноября: разрешённый production deploy выполнен.** API 0.6.0, миграция CallsAndTimedMedia, фактический runtime 10.0.15, HTTPS readiness и авторизованный WSS проверены на целевом сервере. coturn установлен; внешние allocation/relay через UDP, TCP и TLS прошли, anonymous Allocate отклонён. Backup восстановлен и мигрирован в отдельной БД до выпуска. Подробности и фактические ограничения: [отчёт развёртывания](deployments/B06-2026-11-17.md).
 
-Полный состав изменений, команды и проверки F15/M09: [B06-REPORT.md](../B06-REPORT.md). Инфраструктура: [webrtc-operations.md](webrtc-operations.md). Frontend/mobile не изменялись, деплой не выполнялся, B07 не начат. Ниже сохранены результаты прежних этапов и исходного аудита.
+**Открытые проверки:** физические browser↔mobile audio/video, выбранная relay candidate pair и fallback на устройствах, production media upload/scan/playback и нагрузка. ACTIVE подтверждает signaling state, не факт работающих медиа. Уже выданные TURN credentials и P2P нельзя немедленно отозвать через API. Горизонтальное масштабирование по-прежнему не включено.
+
+Полный состав изменений, команды и проверки F15/M09: [B06-REPORT.md](../B06-REPORT.md). Инфраструктура: [webrtc-operations.md](webrtc-operations.md). В рамках backend deploy frontend/mobile не изменялись, B07 не начат. Ниже сохранены результаты прежних этапов и исходного аудита.
 
 ## Исходный аудит B01–B05
 

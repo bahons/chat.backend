@@ -14,6 +14,7 @@ internal sealed class IdentityOptions
 
 internal sealed class AccountEmailOptions
 {
+    public bool Enabled { get; set; } = true;
     public string Host { get; set; } = "127.0.0.1";
     public int Port { get; set; } = 1025;
     public string From { get; set; } = "accounts@chat.local";

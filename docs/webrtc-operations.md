@@ -23,7 +23,7 @@ Backend передаёт только signaling. Медиа идёт между 
 
 ## HTTPS/WSS и медиа
 
-Сохранить production transport из B05: HTTPS до Kestrel, доверенный IP непосредственного прокси, отсутствие публичного порта Kestrel, WebSocket upgrade. Текущий тест HTTPS/WSS использует локальный Kestrel, а не production reverse proxy. Целевую цепочку сертификатов, forwarded headers и WSS нужно проверить на существующей инфраструктуре отдельно.
+Сохранить production transport из B05: HTTPS до Kestrel, доверенный IP непосредственного прокси, отсутствие публичного порта Kestrel, WebSocket upgrade. При разрешённом выпуске 16–17 ноября дополнительно проверены публичная цепочка сертификатов, loopback binding Kestrel, проверка upstream TLS в Nginx и авторизованный WSS через действующий production reverse proxy.
 
 ffprobe запускается без shell с ограничением времени, параллельности, размера вывода и разрешённых протоколов/форматов. Это инспекция metadata, а не полная декодировка и не доказательство воспроизводимости всего файла. Обновлять ffmpeg security patches, ограничить память/CPU процесса средствами ОС/контейнера, tmpfs и egress. Производственный tmpfs увеличен до 192 МиБ для двух временных файлов до 50 МиБ; общие лимиты upload, memory и concurrent requests также нужно согласовать с нагрузкой. После инспекции остаётся обязательный ClamAV и READY gate.
 
@@ -38,4 +38,14 @@ ffprobe запускается без shell с ограничением врем
 5. Проверить NAT, истечение/обновление credentials, busy/reject/timeout, logout/suspension, потерю сети и закрытие tracks при terminal state.
 6. Проверить производственную TLS/WSS-цепочку и нагрузку Outbox/ACL/CallWorker. Задержки worker могут превышать интервал опроса при backlog.
 
-Эти проверки на целевых устройствах и TURN в B06 локально не выполнялись. До них физические звонки не имеют статуса PASS.
+На целевом TURN выполнены внешние allocation/relay UDP/TCP/TLS, но проверки физических устройств ещё не выполнены. Физические звонки не имеют статуса PASS. См. [фактический deployment report](deployments/B06-2026-11-17.md).
+
+## Production overlay
+
+`deploy/docker-compose.webrtc.yml` применяется вместе с существующим base Compose. Сначала provision server-only `deploy/production/private/turn/turnserver.conf` по template, отдельный общий secret в `.env.production`, TLS-файлы в `deploy/production/tls/turn` и firewall. Не заменять site-specific base Compose шаблоном: он содержит настройки существующих S3/email/ClamAV. Все placeholders template должны быть заменены на сервере; не сохранять полученную конфигурацию в Git.
+
+coturn 4.19 запускается с `-c /etc/coturn/turnserver.conf`; CLI и DTLS по умолчанию отключены, минимальный TLS 1.2. Непривилегированному executable необходима capability NET_BIND_SERVICE в bounding set; остальные capabilities отключены. Не добавлять `denied-peer-ip=::`: в этой версии это wildcard, блокирующий relay. Текущий template запрещает private/link-local/loopback peers; при изменении топологии отдельно пересмотреть IPv6.
+
+`deploy/production/renew-turn-tls.sh` — scoped hook для этого домена и `/home/ubuntu/chat`: копирует обновлённый сертификат/ключ с владельцем 65534 и mode 400 и перезапускает только coturn. Проверить фактическое renewal и актуальный fingerprint при следующем продлении; установка hook сама по себе этого не доказывает.
+
+`release.sh` подключает overlay, только если существуют overlay и provisioned private turnserver.conf. Первый запуск coturn выполняется отдельно через `docker compose ... -f deploy/docker-compose.webrtc.yml up -d --wait coturn`; release API не подменяет provisioning. Миграция запускается без stdin (`-T migrate </dev/null`), stop-first и backup обязательны.

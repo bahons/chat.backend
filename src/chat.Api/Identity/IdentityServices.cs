@@ -24,12 +24,12 @@ internal static class IdentityServices
                 && options.LoginKeyCapacity is >= 1 and <= 65536, "Invalid identity configuration.")
             .ValidateOnStart();
         services.AddOptions<AccountEmailOptions>().BindConfiguration("AccountEmail")
-            .Validate(options => !string.IsNullOrWhiteSpace(options.Host) && options.Port is >= 1 and <= 65535
+            .Validate(options => !options.Enabled || (!string.IsNullOrWhiteSpace(options.Host) && options.Port is >= 1 and <= 65535
                 && new EmailAddressAttribute().IsValid(options.From)
                 && (options.EnableTls || options.Host is "127.0.0.1" or "localhost" or "::1")
                 && (options.Username is null || (options.EnableTls && !string.IsNullOrEmpty(options.Password)))
                 && options.QueueCapacity is >= 1 and <= 10000
-                && (options.QueueKeyBase64 is null || AccountMailCipher.ParseKey(options.QueueKeyBase64) is not null),
+                && (options.QueueKeyBase64 is null || AccountMailCipher.ParseKey(options.QueueKeyBase64) is not null)),
                 "Invalid account email configuration.")
             .ValidateOnStart();
 
