@@ -29,6 +29,7 @@ internal sealed class MessageConfiguration : IEntityTypeConfiguration<Message>
     {
         entity.HasIndex(row => new { row.ConversationId, row.AuthorUserId, row.ClientMessageId }).IsUnique();
         entity.HasIndex(row => new { row.ConversationId, row.CreatedAt, row.Id });
+        entity.HasIndex(row => new { row.ConversationId, row.AuthorSide, row.CreatedAt });
         entity.HasAlternateKey(row => new { row.ConversationId, row.Id });
         entity.HasOne<Conversation>().WithMany().HasForeignKey(row => row.ConversationId);
         entity.HasOne<User>().WithMany().HasForeignKey(row => row.AuthorUserId).OnDelete(DeleteBehavior.Restrict);

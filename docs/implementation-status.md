@@ -1,4 +1,14 @@
-# Реализация B01–B06 и технический аудит
+# Реализация B01–B07 и технический аудит
+
+## B07 — Backend, этап 3, 17 ноября 2026
+
+Реализован исходный `prompts/07-business-operations.md`: команда и безопасные одноразовые invitations, OWNER/ADMIN/AGENT ACL с защитой последнего OWNER, atomic assignment с revision, transactional SignalR event только сотрудникам и аналитика по серверным timestamps сообщений. История остаётся у компании. Webhooks, тарифы и отдельные сервисы не добавлены.
+
+OpenAPI 0.7.0 и [phase-3 контракт](contracts/phase-3.md) утверждены как baseline для F16/M10 17 ноября 2026 по запросу пользователя: DTO, права, приглашения, события, метрики, reconnect. [Результат сверки и границы утверждения](contracts/phase-3-approval.md). Новый GET /team сохраняет alias members из прежнего API-документа. Новых breaking changes относительно 0.6.0 нет. Синхронизация consumer repos ещё не выполнена.
+
+Миграция `20261117155040_TeamAssignments`, EF snapshot и idempotent SQL проверены. Restore/build/test/format verify проходят: 64 теста (12 unit, 1 contract, 51 integration), PostgreSQL настоящий. Проверены cross-business, role revoke/Hub disconnect, конкурентное принятие invitation и assignment, гонка последнего OWNER, негативные invitations, точные метрики и отсутствие утечки employee ID клиенту. Полный [B07-REPORT.md](../B07-REPORT.md).
+
+B07 production deploy не выполнялся. F16/M10, B08, физические устройства и межклиентский E2E ещё не начаты. Открыты безопасный release B07, реальные нагрузки/retention и последующая клиентская интеграция. Результаты предыдущих этапов ниже сохранены исторически.
 
 ## B06 — AUDIO/VIDEO и WebRTC signaling, 16 ноября 2026
 

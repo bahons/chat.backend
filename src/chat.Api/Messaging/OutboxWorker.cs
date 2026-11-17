@@ -129,6 +129,12 @@ internal sealed partial class OutboxWorker(IServiceScopeFactory scopes, Realtime
         }
 
         var recipients = await access.RecipientsAsync(id, connections.Snapshot, ct);
+        if (row.EventName == chat.Api.Businesses.TeamService.AssignmentChanged)
+        {
+            var businessConnections = connections.Snapshot.Where(connection => connection.Kind == chat.Domain.Identity.UserKind.BUSINESS_MEMBER)
+                .Select(connection => connection.Id).ToHashSet(StringComparer.Ordinal);
+            recipients = recipients.Where(businessConnections.Contains).ToArray();
+        }
         if (recipients.Length == 0)
         {
             return "offline";

@@ -14,7 +14,7 @@ namespace chat.Api.Endpoints;
 
 internal static class ApiDocumentation
 {
-    public const string Version = "0.6.0";
+    public const string Version = "0.7.0";
     private const string Bearer = "Bearer";
     private static readonly string[] ContentTypes = ["application/pdf", "image/jpeg", "image/png"];
 
@@ -200,6 +200,8 @@ internal static class ApiDocumentation
         }
 
         Add("MembershipSummary", "role", Enum.GetNames<BusinessRole>());
+        Add("TeamMemberView", "role", Enum.GetNames<BusinessRole>());
+        Add("InvitationView", "role", Enum.GetNames<BusinessRole>());
         foreach (var name in new[] { "BusinessApplicationDetails", "BusinessApplicationReceipt", "BusinessApplicationSummary", "BusinessProfile" })
         {
             Add(name, "status", Enum.GetNames<BusinessStatus>());

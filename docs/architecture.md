@@ -22,7 +22,7 @@
 6. Realtime: ASP.NET Core SignalR (`/hubs/messaging`), авторизация на подключении и при методах, серверные группы, события после DB commit.
 7. Notifications: push/email, Outbox → resilient worker with retries.
 8. Calls: Этап 2 — WebRTC signaling через SignalR и STUN/TURN; не media relay backend.
-9. Team/analytics: Этап 3.
+9. Team/analytics: B07, TeamService и REST endpoints в существующем API; PostgreSQL invitations/assignments, transactional Outbox для назначения, SQL aggregates по каноническим сообщениям. [Контракт phase 3](contracts/phase-3.md).
 
 ## Данные
 

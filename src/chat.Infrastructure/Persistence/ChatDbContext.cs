@@ -8,6 +8,8 @@ namespace chat.Infrastructure.Persistence;
 
 public sealed class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContext(options)
 {
+    public DbSet<TeamInvitation> TeamInvitations => Set<TeamInvitation>();
+    public DbSet<ConversationAssignment> ConversationAssignments => Set<ConversationAssignment>();
     public DbSet<Call> Calls => Set<Call>();
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();

@@ -15,7 +15,10 @@ public sealed class OpenApiTests
         var actual = JsonNode.Parse(document)!;
         var paths = actual["paths"]!;
 
-        Assert.Equal("0.6.0", (string?)actual["info"]?["version"]);
+        Assert.Equal("0.7.0", (string?)actual["info"]?["version"]);
+        Assert.NotNull(paths["/v1/team"]?["get"]);
+        Assert.NotNull(paths["/v1/my-business/analytics"]?["get"]);
+        Assert.NotNull(paths["/v1/conversations/{id}/assignment"]?["patch"]);
         Assert.Null(paths["/health/live"]?["get"]?["responses"]?["429"]);
         Assert.Null(paths["/health/ready"]?["get"]?["responses"]?["429"]);
         Assert.NotNull(paths["/health/ready"]?["get"]?["responses"]?["503"]);

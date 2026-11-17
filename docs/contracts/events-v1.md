@@ -1,6 +1,12 @@
-# Realtime contract — ASP.NET Core SignalR (v0.6.0)
+# Realtime contract — ASP.NET Core SignalR (v0.7.0)
 
 **Статус:** baseline, одинаковый в backend/frontend/mobile. Маршруты и события этапа 1 реализованы в B05. Сигналинг звонков реализован в B06. Клиенты phase 2 подключаются после обновления своих контрактов.
+
+Phase 3 добавлен backend в B07; обновление клиентов до 0.7.0 ещё требуется, совпадение их snapshot не заявлено. Полный контракт ролей/REST — [phase-3.md](phase-3.md).
+
+## Этап 3: назначение диалога
+
+Server event `ConversationAssignmentChanged`: прежний envelope с `conversationId`, `eventVersion:1`, payload `{conversationId,userId:UUID|null,revision:integer,updatedAt:timestamp}`. Получатели — только текущие сотрудники этого active verified бизнеса с `JoinConversation`; CLIENT исключён. Нет нового Hub метода назначения: команда идёт через REST PATCH assignment. Outbox в транзакции с назначением, дубли и переупорядочивание возможны. Применять только более высокую revision, после reconnect читать GET assignment; при 404 очистить закрытые данные. Отключение сотрудника снимает его назначения с новой revision. Назначение не меняет ACL истории/звонков остальных сотрудников.
 
 **Технология:** **ASP.NET Core SignalR**, Hub `https://<api-host>/hubs/messaging`, TLS/WSS, SignalR protocol JSON. Browser/server .NET клиент: `Microsoft.AspNetCore.SignalR.Client`; React Native клиент: официальный `@microsoft/signalr` после проверки RN/transport compatibility. Имена Hub methods и клиентских событий ниже чувствительны к контракту и тестируются кросс-клиентски.
 

@@ -24,6 +24,7 @@ if (builder.Environment.IsProduction() || builder.Configuration.GetValue<bool>("
 builder.Services.AddAccountIdentity();
 builder.Services.AddScoped<BusinessDrafts>();
 builder.Services.AddScoped<BusinessService>();
+builder.Services.AddScoped<TeamService>();
 builder.Services.AddScoped<ConversationAccess>();
 builder.Services.AddScoped<ConversationService>();
 builder.Services.AddScoped<DeviceRegistry>();
@@ -106,6 +107,7 @@ app.UseAuthorization();
 app.MapHealthEndpoints();
 app.MapAccountEndpoints();
 app.MapBusinessEndpoints();
+app.MapTeamEndpoints();
 app.MapDirectoryEndpoints();
 app.MapConversationEndpoints();
 app.MapMediaEndpoints();

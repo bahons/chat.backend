@@ -19,7 +19,13 @@
 | `AuditLog` | `id`, `actorId`, `action`, `entityType`, `entityId`, `createdAt`, `metadata` | no raw documents or message text |
 
 Этап 2: реализованный `Call` использует `operatorUserId`, `endedReason`, выбранные семейства и revision; точная модель приведена в разделе B06 ниже.
-Этап 3: `BusinessInvitation`, `ConversationAssignment`, aggregate analytics.
+Этап 3: реализованы `TeamInvitation`, `ConversationAssignment`, aggregate analytics без копирования сообщений. Подробности B07 ниже.
+
+## B07: команда и аналитика
+
+`20261117155040_TeamAssignments`: TeamInvitations (business, inviter, normalized email, роль, token SHA256 unique, created/expiry/accepted/revoked timestamps). CHECK запрещает одновременные accepted/revoked и неправильный срок/роль. ConversationAssignments: PK conversation, business, nullable assignee, updater, UTC updatedAt и положительная Revision. Составные FK фиксируют бизнес диалога и membership сотрудника. Отключение membership снимает его назначения в той же транзакции; строки membership не удаляются. Все team mutations сериализуются блокировкой Businesses FOR UPDATE, включая last-owner и CAS. Обновление по устаревшей revision получает 409.
+
+Analytics не создаёт дубликат message/event store: timestamp и AuthorSide берутся из Messages через parameterized PostgreSQL aggregate/lateral queries. Индексы Conversations(BusinessId,CreatedAt,Id) и новый Messages(ConversationId,AuthorSide,CreatedAt) поддерживают cohort/first response. Определение интервала и знаменателей: [phase-3](contracts/phase-3.md). Отдельные бизнес-события изменений ролей/приглашений/назначений фиксируются в AuditLogs, assignment event — в Outbox в той же транзакции. Они не содержат token, plaintext password и сообщений. Автоматическая очистка invitation/assignment history не добавлена; сроки следует согласовать с retention до широкого запуска.
 
 ## Важные database invariants
 

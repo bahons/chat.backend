@@ -1,0 +1,32 @@
+{
+  "version": "0.7.0",
+  "baselineDate": "2026-11-17",
+  "scope": "F16/M10 phase-3 integration; no production deployment",
+  "openapi": {
+    "path": "artifacts/openapi.json",
+    "normalization": "JSON.stringify(JSON.parse(UTF8))",
+    "sha256": "14e055f65456b3dfad65b3f7dd9cc2960736e4094079597620479e6231ae3536"
+  },
+  "events": {
+    "path": "docs/contracts/events-v1.md",
+    "normalization": "UTF8 with CRLF replaced by LF",
+    "sha256": "506acd3899b7c5d2c595e57178e48b7061843729478d6375661caf62db756c87"
+  },
+  "methods": [
+    "GET /v1/team",
+    "GET /v1/my-business/members",
+    "PATCH /v1/my-business/members/{id}",
+    "GET /v1/my-business/invitations",
+    "POST /v1/my-business/invitations",
+    "DELETE /v1/my-business/invitations/{id}",
+    "POST /v1/invitations/accept",
+    "GET /v1/conversations/{id}/assignment",
+    "PATCH /v1/conversations/{id}/assignment",
+    "GET /v1/my-business/analytics"
+  ],
+  "newSignalREvents": [
+    "ConversationAssignmentChanged"
+  ],
+  "eventVersion": 1,
+  "requiredMigration": "20261117155040_TeamAssignments"
+}
